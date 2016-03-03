@@ -27,10 +27,12 @@ Start splash:
 
     docker run -p 8050:8050 scrapinghub/splash
 
-Set ``SPLASH_URL`` in ``undercrawler/local_settings.py`` if different
-from the default in ``undercrawler/settings.py``.
+Specify url to crawl via the ``url`` param:
 
-Specify url to crawl via the ``url`` param
-(``DOWNLOAD_DELAY`` set to 0 here as this is a local test server):
+    scrapy crawl crawler -a url=http://127.0.0.1:8001
 
-    scrapy crawl crawler -a url=http://192.168.1.41:8001 -s DOWNLOAD_DELAY=0
+Useful options to tweak (add to the above command via ``-s NAME=value``):
+
+- ``SPLASH_URL`` url of the splash instance
+- ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
+- ``USE_HH`` - set to 0 to disable headless-horesman scripts

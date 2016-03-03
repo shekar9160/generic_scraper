@@ -71,8 +71,3 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
-
-try:
-    from .local_settings import *
-except ImportError:
-    pass
