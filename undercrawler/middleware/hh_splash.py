@@ -1,15 +1,19 @@
 import json
 import os.path
 
-from scrapy.http import Response
-from scrapy.http.cookies import CookieJar
+from scrapy.downloadermiddlewares.cookies import CookiesMiddleware
 from scrapyjs.middleware import SplashMiddleware
 
 
-class HHSplashMiddleware(SplashMiddleware):
+class HHSplashMiddleware(SplashMiddleware, CookiesMiddleware):
+    ''' Middleware that extends SplashMiddleware from scrapyjs:
+    * Make all requests using headless_horseman.lua, including POST requests.
+    * Add cookies support.
+    '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.jar = CookieJar()
+        CookiesMiddleware.__init__(self)
+        # Load headless_horseman scripts
         root = os.path.join(os.path.dirname(__file__), '../directives')
         with open(os.path.join(root, 'headless_horseman.lua')) as f:
             self.lua_source = f.read()
@@ -19,20 +23,19 @@ class HHSplashMiddleware(SplashMiddleware):
     def process_request(self, request, spider):
         if request.meta.get('_splash_processed'):
             return
-        if request.meta.get('hh_splash'):
-            self._set_request_cookies(self.jar, request)
-            request.meta['splash'] = {
-                'endpoint': 'execute',
-                'args': _without_None({
-                    'force_splash': True,
-                    'lua_source': self.lua_source,
-                    'js_source': self.js_source,
-                    'run_hh': self.crawler.settings.getbool('RUN_HH'),
-                    'method': request.method,
-                    'body': request.body.decode('utf-8') or None,
-                    'headers': request.headers.to_unicode_dict(),
-                })
-            }
+        CookiesMiddleware.process_request(self, request, spider)
+        request.meta['splash'] = {
+            'endpoint': 'execute',
+            'args': _without_None({
+                'force_splash': True,
+                'lua_source': self.lua_source,
+                'js_source': self.js_source,
+                'run_hh': self.crawler.settings.getbool('RUN_HH'),
+                'method': request.method,
+                'body': request.body.decode('utf-8') or None,
+                'headers': request.headers.to_unicode_dict(),
+            })
+        }
         return super().process_request(request, spider)
 
     def process_response(self, request, response, spider):
@@ -47,39 +50,10 @@ class HHSplashMiddleware(SplashMiddleware):
                     headers[h['name']] = h['value']
             response = response.replace(headers=headers)
         if not request.meta.get('dont_merge_cookies', False):
-            # FIXME - smth more subtle than request.replace?
-            self.jar.extract_cookies(
-                response, request.replace(url=response.url))
+            # Replace url in request so that it matches original url
+            CookiesMiddleware.process_response(
+                self, request.replace(url=response.url), response, spider)
         return response
-
-    # Copied from CookiesMiddleware
-
-    def _set_request_cookies(self, jar, request):
-        cookies = self._get_request_cookies(jar, request)
-        for cookie in cookies:
-            jar.set_cookie_if_ok(cookie, request)
-        request.headers.pop('Cookie', None)
-        jar.add_cookie_header(request)
-
-    def _get_request_cookies(self, jar, request):
-        if isinstance(request.cookies, dict):
-            cookie_list = [
-                {'name': k, 'value': v} for k, v in request.cookies.items()]
-        else:
-            cookie_list = request.cookies
-        cookies = [self._format_cookie(x) for x in cookie_list]
-        headers = {'Set-Cookie': cookies}
-        response = Response(request.url, headers=headers)
-        return jar.make_cookies(response, request)
-
-    def _format_cookie(self, cookie):
-        # build cookie string
-        cookie_str = '%s=%s' % (cookie['name'], cookie['value'])
-        if cookie.get('path', None):
-            cookie_str += '; Path=%s' % cookie['path']
-        if cookie.get('domain', None):
-            cookie_str += '; Domain=%s' % cookie['domain']
-        return cookie_str
 
 
 def _without_None(d):
