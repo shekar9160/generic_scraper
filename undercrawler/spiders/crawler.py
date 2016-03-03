@@ -31,19 +31,20 @@ class CrawlerSpider(scrapy.Spider):
             yield self.splash_request(link.url)
 
     def splash_request(self, url):
-        if self.crawler.settings.getbool('USE_HH'):
-            callback = lambda r: self.handle_hh_response(url, r)
-            splash = {
-                'endpoint': 'execute',
-                'args': {
-                    'lua_source': self.lua_source,
-                    'js_source': self.js_source,
-                }}
-        else:
-            callback = lambda r: self.parse(r.replace(url=url))
-            splash = {'endpoint': 'render.html'}
+        run_hh = self.crawler.settings.getbool('USE_HH')
         return scrapy.Request(
-            url, callback=callback, meta={'splash': splash})
+            url,
+            callback=lambda r: self.handle_hh_response(url, r),
+            meta={
+                'splash': {
+                    'endpoint': 'execute',
+                    'args': {
+                        'lua_source': self.lua_source,
+                        'js_source': self.js_source,
+                        'run_hh': run_hh,
+                    }
+                }
+            })
 
     def handle_hh_response(self, url, response):
         data = json.loads(response.text)

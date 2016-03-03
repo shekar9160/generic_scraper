@@ -14,6 +14,7 @@ function main(splash)
   ]]
 
   local debug = get_arg(splash.args.debug, false)
+  local run_hh = get_arg(splash.args.run_hh, true)
   local return_har = get_arg(splash.args.return_har, true)
   local return_html = get_arg(splash.args.return_html, true)
   local return_png = get_arg(splash.args.return_png, true)
@@ -43,23 +44,25 @@ function main(splash)
 
   -- Run a battery of Headless Horseman tests.
 
-  splash:wait_for_resume([[
-    function main(splash) {
-      __headless_horseman__
-        .wait(3000)
-        .then(__headless_horseman__.tryInfiniteScroll, 3)
-        .then(__headless_horseman__.tryClickXhr, 3)
-        .then(__headless_horseman__.tryMouseoverXhr, 3)
-        .then(__headless_horseman__.scroll, window, 'left', 'top')
-        .then(__headless_horseman__.cleanup)
-        .then(__headless_horseman__.removeOverlays)
-        .then(splash.resume);
-    }
-  ]])
+  if run_hh then
+    splash:wait_for_resume([[
+      function main(splash) {
+        __headless_horseman__
+          .wait(3000)
+          .then(__headless_horseman__.tryInfiniteScroll, 3)
+          .then(__headless_horseman__.tryClickXhr, 3)
+          .then(__headless_horseman__.tryMouseoverXhr, 3)
+          .then(__headless_horseman__.scroll, window, 'left', 'top')
+          .then(__headless_horseman__.cleanup)
+          .then(__headless_horseman__.removeOverlays)
+          .then(splash.resume);
+      }
+    ]])
 
-  splash:stop()
-  splash:set_viewport_full()
-  splash:wait(1)
+    splash:stop()
+    splash:set_viewport_full()
+    splash:wait(1)
+  end
 
   -- Render and return the requested outputs.
 

@@ -1,11 +1,12 @@
 A crawler
 =========
 
-A crawler to collect all components together.
+A crawler to collect all components together:
+
+* splash with HH scripts
 
 TODO:
 
-* splash with HH scripts
 * autologin + autoregister + login keychain
 * crazy-form-submitter
 * captcha solving
