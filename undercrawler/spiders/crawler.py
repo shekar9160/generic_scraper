@@ -17,6 +17,9 @@ class CrawlerSpider(scrapy.Spider):
     def start_requests(self):
         yield self.splash_request(self.start_url)
 
+    def splash_request(self, url, **kwargs):
+        return scrapy.Request(url, callback=self.parse, **kwargs)
+
     def parse(self, response):
         yield PageItem(url=response.url, body=response.body)
         if response.text:
@@ -24,10 +27,6 @@ class CrawlerSpider(scrapy.Spider):
                 yield from self.handle_form(response.url, form)
         for link in self.link_extractor.extract_links(response):
             yield self.splash_request(link.url)
-
-    def splash_request(self, url, **kwargs):
-        return scrapy.Request(
-            url, callback=self.parse, meta={'hh_splash': True}, **kwargs)
 
     def handle_form(self, url, form):
         element, meta = form
