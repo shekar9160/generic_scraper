@@ -19,6 +19,9 @@ function main(splash)
   local return_html = get_arg(splash.args.return_html, true)
   local return_png = get_arg(splash.args.return_png, true)
   local url = splash.args.url
+  local method = get_arg(splash.args.method, "GET")
+  local body = get_arg(splash.args.body, nil)
+  local headers = get_arg(splash.args.headers, nil)
   local visual = get_arg(splash.args.visual, false)
 
   -- 992px is Bootstrap's minimum "desktop" size. 744 gives the viewport
@@ -39,7 +42,8 @@ function main(splash)
 
   splash:autoload("__headless_horseman__.patchAll();")
   splash:set_viewport_size(viewport_width, viewport_height)
-  assert(splash:go(url))
+  -- TODO - handle non-200 responses?
+  assert(splash:go{url, http_method=method, headers=headers, body=body})
   splash:lock_navigation()
 
   -- Run a battery of Headless Horseman tests.
@@ -69,7 +73,7 @@ function main(splash)
   render = {}
 
   if return_har then
-    render['har'] = splash:har()
+    render['har'] = splash:har{reset=true}
   end
 
   if return_html then

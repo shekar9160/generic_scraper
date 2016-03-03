@@ -37,4 +37,4 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 
 - ``SPLASH_URL`` url of the splash instance
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
-- ``USE_HH`` - set to 0 to disable headless-horesman scripts
+- ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts

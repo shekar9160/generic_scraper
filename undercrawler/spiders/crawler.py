@@ -1,4 +1,3 @@
-import json
 import os.path
 
 import scrapy
@@ -35,26 +34,22 @@ class CrawlerSpider(scrapy.Spider):
         for link in self.link_extractor.extract_links(response):
             yield self.splash_request(link.url)
 
-    def splash_request(self, url):
-        run_hh = self.crawler.settings.getbool('USE_HH')
+    def splash_request(self, url, **kwargs):
+        splash_args = {
+            'force_splash': True,
+            'lua_source': self.lua_source,
+            'js_source': self.js_source,
+            'run_hh': self.crawler.settings.getbool('RUN_HH'),
+        }
         return scrapy.Request(
             url,
-            callback=self.handle_hh_response,
+            callback=self.parse,
             meta={
                 'splash': {
                     'endpoint': 'execute',
-                    'args': {
-                        'lua_source': self.lua_source,
-                        'js_source': self.js_source,
-                        'run_hh': run_hh,
-                    }
+                    'args': splash_args,
                 }
-            })
-
-    def handle_hh_response(self, response):
-        data = json.loads(response.text)
-        html_response = response.replace(body=data['html'].encode('utf-8'))
-        return self.parse(html_response)
+            }, **kwargs)
 
     def handle_form(self, url, form):
         element, meta = form
@@ -64,5 +59,4 @@ class CrawlerSpider(scrapy.Spider):
                 params = autologin.login_params(
                     url, credentials, element, meta)
                 if params:
-                    # TODO - cookies
-                    yield scrapy.Request(callback=self.parse, **params)
+                    yield self.splash_request(**params)

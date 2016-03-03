@@ -4,20 +4,26 @@ SPIDER_MODULES = ['undercrawler.spiders']
 NEWSPIDER_MODULE = 'undercrawler.spiders'
 
 ROBOTSTXT_OBEY = False
-DEPTH_LIMIT = 10
+DEPTH_LIMIT = 20
 
 SPLASH_URL = 'http://0.0.0.0:8050'
 
 DOWNLOADER_MIDDLEWARES = {
-    'scrapyjs.SplashMiddleware': 725,
+    'undercrawler.hh_middleware.HHMiddleware': 725,
 }
 
 DUPEFILTER_CLASS = 'scrapyjs.SplashAwareDupeFilter'
 
-USE_HH = True
+# Run full headless-horseman scripts
+RUN_HH = True
+
+# Cookies are handled in HHMiddleware
+COOKIES_ENABLED = False
 
 DOWNLOAD_DELAY = 3
 CONCURRENT_REQUESTS_PER_DOMAIN = 16
+
+RETRY_ENABLED = False
 
 #AUTOTHROTTLE_ENABLED = True
 #AUTOTHROTTLE_START_DELAY = 3
@@ -33,9 +39,6 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 16
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
-
-# Disable cookies (enabled by default)
-#COOKIES_ENABLED = False
 
 # Disable Telnet Console (enabled by default)
 #TELNETCONSOLE_ENABLED = False
