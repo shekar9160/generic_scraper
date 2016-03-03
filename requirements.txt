@@ -1,3 +1,4 @@
 Scrapy==1.1.0rc3
 -e git+git@github.com:scrapinghub/scrapy-splash.git#egg=scrapyjs
 Flask==0.10.1
+Formasaurus[with-deps]

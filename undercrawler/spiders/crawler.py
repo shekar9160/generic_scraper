@@ -3,8 +3,10 @@ import os.path
 
 import scrapy
 from scrapy.linkextractors import LinkExtractor
+import formasaurus
 
 from undercrawler.items import PageItem
+from undercrawler import autologin, login_keychain
 
 
 class CrawlerSpider(scrapy.Spider):
@@ -26,7 +28,10 @@ class CrawlerSpider(scrapy.Spider):
         yield self.splash_request(self.start_url)
 
     def parse(self, response):
-        yield PageItem(url=response.url) #, body=response.body)
+        yield PageItem(url=response.url, body=response.body)
+        if response.text:
+            for form in formasaurus.extract_forms(response.text):
+                yield from self.handle_form(response.url, form)
         for link in self.link_extractor.extract_links(response):
             yield self.splash_request(link.url)
 
@@ -51,3 +56,14 @@ class CrawlerSpider(scrapy.Spider):
         html_response = response.replace(
             url=url, body=data['html'].encode('utf-8'))
         return self.parse(html_response)
+
+    def handle_form(self, url, form):
+        element, meta = form
+        if meta['form'] == 'login':
+            credentials = login_keychain.get_credentials(url)
+            if credentials is not None:
+                params = autologin.login_params(
+                    url, credentials, element, meta)
+                if params:
+                    # TODO - cookies
+                    yield scrapy.Request(callback=self.parse, **params)

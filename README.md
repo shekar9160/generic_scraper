@@ -19,6 +19,7 @@ Installation
 Requires Python 3.4:
 
     pip install -r requirements.lock.txt
+    python -c "import formasaurus; formasaurus.extract_forms('a')"
 
 
 Run crawler

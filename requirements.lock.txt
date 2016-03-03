@@ -1,25 +1,36 @@
 Scrapy==1.1.0rc3
 -e git+git@github.com:scrapinghub/scrapy-splash.git@b9720abdc87f723c1760dd71c973e3ad04d59645#egg=scrapyjs
 Flask==0.10.1
+Formasaurus[with-deps]
 ## The following requirements were added by pip freeze:
 attrs==15.2.0
 cffi==1.5.2
 cryptography==1.2.3
 cssselect==0.9.1
+docopt==0.6.2
 idna==2.0
 itsdangerous==0.24
 Jinja2==2.8
 lxml==3.5.0
 MarkupSafe==0.23
+numpy==1.10.4
 parsel==1.0.1
-pyasn1==0.1.9
 pyasn1-modules==0.0.8
+pyasn1==0.1.9
 pycparser==2.14
 PyDispatcher==2.0.5
 pyOpenSSL==0.15.1
+python-crfsuite==0.8.4
 queuelib==1.4.2
+requests==2.9.1
+scikit-learn==0.17.1
+scipy==0.17.0
 service-identity==16.0.0
 six==1.10.0
+sklearn-crfsuite==0.3.2
+tabulate==0.7.5
+tldextract==1.7.5
+tqdm==3.8.0
 Twisted==15.5.0
 w3lib==1.13.0
 Werkzeug==0.11.4
