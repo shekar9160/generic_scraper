@@ -1,0 +1,26 @@
+Scrapy==1.1.0rc3
+-e git+git@github.com:scrapinghub/scrapy-splash.git@b9720abdc87f723c1760dd71c973e3ad04d59645#egg=scrapyjs
+Flask==0.10.1
+## The following requirements were added by pip freeze:
+attrs==15.2.0
+cffi==1.5.2
+cryptography==1.2.3
+cssselect==0.9.1
+idna==2.0
+itsdangerous==0.24
+Jinja2==2.8
+lxml==3.5.0
+MarkupSafe==0.23
+parsel==1.0.1
+pyasn1==0.1.9
+pyasn1-modules==0.0.8
+pycparser==2.14
+PyDispatcher==2.0.5
+pyOpenSSL==0.15.1
+queuelib==1.4.2
+service-identity==16.0.0
+six==1.10.0
+Twisted==15.5.0
+w3lib==1.13.0
+Werkzeug==0.11.4
+zope.interface==4.1.3
