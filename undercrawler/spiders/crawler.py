@@ -1,5 +1,3 @@
-import os.path
-
 import scrapy
 from scrapy.linkextractors import LinkExtractor
 import formasaurus
@@ -14,13 +12,6 @@ class CrawlerSpider(scrapy.Spider):
     def __init__(self, url, *args, **kwargs):
         self.start_url = url
         self.link_extractor = LinkExtractor(allow=[url])
-
-        root = os.path.join(os.path.dirname(__file__), '../directives/')
-        with open(os.path.join(root, 'headless_horseman.lua')) as f:
-            self.lua_source = f.read()
-        with open(os.path.join(root, 'headless_horseman.js')) as f:
-            self.js_source = f.read()
-
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
@@ -35,21 +26,8 @@ class CrawlerSpider(scrapy.Spider):
             yield self.splash_request(link.url)
 
     def splash_request(self, url, **kwargs):
-        splash_args = {
-            'force_splash': True,
-            'lua_source': self.lua_source,
-            'js_source': self.js_source,
-            'run_hh': self.crawler.settings.getbool('RUN_HH'),
-        }
         return scrapy.Request(
-            url,
-            callback=self.parse,
-            meta={
-                'splash': {
-                    'endpoint': 'execute',
-                    'args': splash_args,
-                }
-            }, **kwargs)
+            url, callback=self.parse, meta={'hh_splash': True}, **kwargs)
 
     def handle_form(self, url, form):
         element, meta = form

@@ -9,7 +9,7 @@ DEPTH_LIMIT = 20
 SPLASH_URL = 'http://0.0.0.0:8050'
 
 DOWNLOADER_MIDDLEWARES = {
-    'undercrawler.hh_middleware.HHMiddleware': 725,
+    'undercrawler.middleware.HHSplashMiddleware': 725,
 }
 
 DUPEFILTER_CLASS = 'scrapyjs.SplashAwareDupeFilter'

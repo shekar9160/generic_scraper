@@ -1,30 +1,38 @@
 import json
+import os.path
 
 from scrapy.http import Response
 from scrapy.http.cookies import CookieJar
 from scrapyjs.middleware import SplashMiddleware
 
 
-class HHMiddleware(SplashMiddleware):
+class HHSplashMiddleware(SplashMiddleware):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.jar = CookieJar()
+        root = os.path.join(os.path.dirname(__file__), '../directives')
+        with open(os.path.join(root, 'headless_horseman.lua')) as f:
+            self.lua_source = f.read()
+        with open(os.path.join(root, 'headless_horseman.js')) as f:
+            self.js_source = f.read()
 
     def process_request(self, request, spider):
         if request.meta.get('_splash_processed'):
             return
-        splash_options = request.meta.get('splash')
-        self._set_request_cookies(self.jar, request)
-        if splash_options:
-            args = splash_options.get('args', {})
-            args.update({
-                'method': request.method,
-                'body': request.body.decode('utf-8') or None,
-                'headers': request.headers.to_unicode_dict(),
+        if request.meta.get('hh_splash'):
+            self._set_request_cookies(self.jar, request)
+            request.meta['splash'] = {
+                'endpoint': 'execute',
+                'args': _without_None({
+                    'force_splash': True,
+                    'lua_source': self.lua_source,
+                    'js_source': self.js_source,
+                    'run_hh': self.crawler.settings.getbool('RUN_HH'),
+                    'method': request.method,
+                    'body': request.body.decode('utf-8') or None,
+                    'headers': request.headers.to_unicode_dict(),
                 })
-            args['headers']['xcustom'] = 'yess'
-            splash_options['args'] = {
-                k: v for k, v in args.items() if v is not None}
+            }
         return super().process_request(request, spider)
 
     def process_response(self, request, response, spider):
@@ -39,7 +47,7 @@ class HHMiddleware(SplashMiddleware):
                     headers[h['name']] = h['value']
             response = response.replace(headers=headers)
         if not request.meta.get('dont_merge_cookies', False):
-            # TODO - more subte than request.replace!!!
+            # FIXME - smth more subtle than request.replace?
             self.jar.extract_cookies(
                 response, request.replace(url=response.url))
         return response
@@ -72,3 +80,7 @@ class HHMiddleware(SplashMiddleware):
         if cookie.get('domain', None):
             cookie_str += '; Domain=%s' % cookie['domain']
         return cookie_str
+
+
+def _without_None(d):
+    return {k: v for k, v in d.items() if v is not None}
