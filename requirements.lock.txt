@@ -1,5 +1,5 @@
 Scrapy==1.1.0rc3
--e git+git@github.com:scrapinghub/scrapy-splash.git@b9720abdc87f723c1760dd71c973e3ad04d59645#egg=scrapyjs
+-e git+git@github.com:lopuhin/scrapy-splash.git@a4cbcb9402757cea89f8977ffe1e0c5b795b609f#egg=scrapyjs
 Flask==0.10.1
 Formasaurus[with-deps]
 ## The following requirements were added by pip freeze:

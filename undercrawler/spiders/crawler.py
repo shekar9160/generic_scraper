@@ -39,7 +39,7 @@ class CrawlerSpider(scrapy.Spider):
         run_hh = self.crawler.settings.getbool('USE_HH')
         return scrapy.Request(
             url,
-            callback=lambda r: self.handle_hh_response(url, r),
+            callback=self.handle_hh_response,
             meta={
                 'splash': {
                     'endpoint': 'execute',
@@ -51,10 +51,9 @@ class CrawlerSpider(scrapy.Spider):
                 }
             })
 
-    def handle_hh_response(self, url, response):
+    def handle_hh_response(self, response):
         data = json.loads(response.text)
-        html_response = response.replace(
-            url=url, body=data['html'].encode('utf-8'))
+        html_response = response.replace(body=data['html'].encode('utf-8'))
         return self.parse(html_response)
 
     def handle_form(self, url, form):
