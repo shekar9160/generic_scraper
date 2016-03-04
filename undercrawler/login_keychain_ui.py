@@ -59,19 +59,26 @@ class KeychainItem(db.Model):
             db.session.rollback()
 
     @classmethod
-    def get_solved_by_login_url(cls, url):
-        ''' Return (login, password) pair (or None) for a solved registration
-        task. URLS are filter by netloc, returning the first matching result.
+    def solved_by_login_url(cls, url):
+        ''' Return a list of (login, password) pairs for solved registration
+        task. URLS are filter only by netloc.
         '''
         netloc = urlsplit(url).netloc
-        item = (
-            db.session.query(cls)
+        return [(item.login, item.password) for item in db.session.query(cls)
             .filter(cls.netloc == netloc)
             .filter(cls.skip == False)
             .filter(cls.login != None)
-            .first())
-        if item:
-            return item.login, item.password
+            .filter(cls.password != None)]
+
+    @classmethod
+    def any_unsolved(cls):
+        ''' Are there any unsolved tasks?
+        '''
+        return db.session.query(
+            db.session.query(cls)
+            .filter(cls.skip == False)
+            .filter(cls.login == None)
+            .exists())
 
     def __unicode__(self):
         return '%s: %s' % (self.url, self.login)
