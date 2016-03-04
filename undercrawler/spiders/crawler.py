@@ -30,10 +30,13 @@ class CrawlerSpider(scrapy.Spider):
 
     def handle_form(self, url, form):
         element, meta = form
-        if meta['form'] == 'login':
+        form_type = meta['form']
+        if form_type == 'login':
             credentials = login_keychain.get_credentials(url)
             if credentials is not None:
                 params = autologin.login_params(
                     url, credentials, element, meta)
                 if params:
                     yield self.splash_request(**params)
+        elif form_type == 'registration':
+            login_keychain.add_registration_task(url)

@@ -1,7 +1,10 @@
 Scrapy==1.1.0rc3
 -e git+git@github.com:lopuhin/scrapy-splash.git@a4cbcb9402757cea89f8977ffe1e0c5b795b609f#egg=scrapyjs
+SQLAlchemy==1.0.12
 Flask==0.10.1
-Formasaurus[with-deps]
+flask-admin==1.4.0
+Flask-SQLAlchemy==2.1
+Formasaurus[with-deps]==0.7.1
 ## The following requirements were added by pip freeze:
 attrs==15.2.0
 cffi==1.5.2
@@ -34,4 +37,5 @@ tqdm==3.8.0
 Twisted==15.5.0
 w3lib==1.13.0
 Werkzeug==0.11.4
+wtforms==2.1
 zope.interface==4.1.3

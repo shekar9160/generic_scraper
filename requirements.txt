@@ -1,4 +1,7 @@
 Scrapy==1.1.0rc3
 -e git+git@github.com:lopuhin/scrapy-splash.git@hh#egg=scrapyjs
+SQLAlchemy==1.0.12
 Flask==0.10.1
-Formasaurus[with-deps]
+flask-admin==1.4.0
+Flask-SQLAlchemy==2.1
+Formasaurus[with-deps]==0.7.1

@@ -38,3 +38,11 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``SPLASH_URL`` url of the splash instance
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
+
+
+Run login keychain UI
+---------------------
+
+    python undercrawler/login_keychain_ui.py --debug
+
+And visit http://127.0.0.1:5000/
