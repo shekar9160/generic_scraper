@@ -4,8 +4,10 @@ from urllib.parse import urlsplit, urlunsplit
 import jinja2
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-import flask_admin as admin
+import flask_admin
 from flask_admin.contrib import sqla
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.exc import IntegrityError
 
 
 app = Flask(__name__)
@@ -23,29 +25,53 @@ def index():
 
 class KeychainItem(db.Model):
     __tablename__ = 'keychain_item'
-
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-
+    # Parts of the registration url
     scheme = db.Column(db.String(63), nullable=False)
     netloc = db.Column(db.String(255), nullable=False)
     path = db.Column(db.Text(), nullable=False, default='')
     query = db.Column(db.Text(), nullable=False, default='')
     fragment = db.Column(db.Text(), nullable=False, default='')
-
+    # Login credentials (or marked as skipped)
     skip = db.Column(db.Boolean, default=False, nullable=False)
     login = db.Column(db.String(255), nullable=True)
     password = db.Column(db.String(255), nullable=True)
 
+    __table_args__ = (
+        UniqueConstraint('scheme', 'netloc', 'path', 'query', 'fragment',
+                         name='_unique_url'),
+    )
+
     @classmethod
-    def from_url(cls, url):
+    def add_task(cls, url):
         parts = urlsplit(url)
-        return cls(
+        item = cls(
             scheme=parts.scheme,
             netloc=parts.netloc,
             path=parts.path,
             query=parts.query,
             fragment=parts.fragment,
             skip=False)
+        db.session.add(item)
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+
+    @classmethod
+    def get_solved_by_login_url(cls, url):
+        ''' Return (login, password) pair (or None) for a solved registration
+        task. URLS are filter by netloc, returning the first matching result.
+        '''
+        netloc = urlsplit(url).netloc
+        item = (
+            db.session.query(cls)
+            .filter(cls.netloc == netloc)
+            .filter(cls.skip == False)
+            .filter(cls.login != None)
+            .first())
+        if item:
+            return item.login, item.password
 
     def __unicode__(self):
         return '%s: %s' % (self.url, self.login)
@@ -71,7 +97,7 @@ class KeychainItemAdmin(sqla.ModelView):
     column_searchable_list = ['netloc', 'query']
 
 
-admin = admin.Admin(app, template_mode='bootstrap3')
+admin = flask_admin.Admin(app, template_mode='bootstrap3')
 admin.add_view(KeychainItemAdmin(KeychainItem, db.session))
 
 

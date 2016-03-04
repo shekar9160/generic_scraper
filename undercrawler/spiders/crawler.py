@@ -2,8 +2,8 @@ import scrapy
 from scrapy.linkextractors import LinkExtractor
 import formasaurus
 
-from undercrawler.items import PageItem
-from undercrawler import autologin, login_keychain
+from ..items import PageItem
+from .. import autologin, login_keychain
 
 
 class CrawlerSpider(scrapy.Spider):

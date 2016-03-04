@@ -45,4 +45,6 @@ Run login keychain UI
 
     python undercrawler/login_keychain_ui.py --debug
 
-And visit http://127.0.0.1:5000/
+And visit http://127.0.0.1:5000/. SQLite is used as a database,
+it is stored at ``undercrawler/keychain_db.sqlite`` and created if missing
+on the UI app start.
