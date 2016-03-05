@@ -84,5 +84,7 @@ function main(splash)
     render['png'] = splash:png{width=viewport_width}
   end
 
+  render['url'] = splash:url()
+
   return render
 end

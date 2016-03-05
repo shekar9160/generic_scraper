@@ -1,6 +1,7 @@
 import json
 import os.path
 
+from scrapy.http import Headers
 from scrapy.downloadermiddlewares.cookies import CookiesMiddleware
 from scrapyjs.middleware import SplashMiddleware
 
@@ -41,14 +42,23 @@ class HHSplashMiddleware(SplashMiddleware, CookiesMiddleware):
     def process_response(self, request, response, spider):
         response = super().process_response(request, response, spider)
         data = json.loads(response.text)
-        if 'html' in data:
-            response = response.replace(body=data['html'].encode('utf-8'))
-        if 'har' in data:
-            headers = {}
+        if 'url' in data:
+            headers = Headers()
+            # FIXME - this collects headers from all requests,
+            # so is not quite correct. We are interested in cookies, so we
+            # could instead get them, but splash:get_cookies() returns
+            # them in a different format.
             for entry in data['har']['log']['entries']:
                 for h in entry['response']['headers']:
-                    headers[h['name']] = h['value']
-            response = response.replace(headers=headers)
+                    current_headers = set(headers.getlist(h['name']))
+                    # FIXME - this splitting looks like a splash bug?
+                    for v in h['value'].split('\n'):
+                        if v not in current_headers:
+                            headers.appendlist(h['name'], v)
+            response = response.replace(
+                url=data['url'],
+                headers=headers,
+                body=data['html'].encode('utf-8'))
         if not request.meta.get('dont_merge_cookies', False):
             # Replace url in request so that it matches original url
             CookiesMiddleware.process_response(
