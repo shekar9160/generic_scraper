@@ -59,7 +59,9 @@ class HHSplashMiddleware(SplashMiddleware, CookiesMiddleware):
             response = response.replace(
                 url=data['url'],
                 headers=headers,
-                body=data['html'].encode('utf-8'))
+                body=data['html'],
+                encoding='utf8',
+            )
         if not request.meta.get('dont_merge_cookies', False):
             # Replace url in request so that it matches original url
             CookiesMiddleware.process_response(
