@@ -1,3 +1,4 @@
 *.pyc
 venv
 undercrawler/keychain_db.sqlite
+*.txt

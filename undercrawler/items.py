@@ -3,7 +3,7 @@ import scrapy
 
 class PageItem(scrapy.Item):
     url = scrapy.Field()
-    body = scrapy.Field()
+    text = scrapy.Field()
 
 
 class FormItem(scrapy.Item):

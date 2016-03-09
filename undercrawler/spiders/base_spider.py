@@ -28,7 +28,7 @@ class BaseSpider(scrapy.Spider):
     def parse(self, response):
         url = response.url
         self.logger.info(url)
-        yield PageItem(url=url, body=response.body)
+        yield PageItem(url=url, text=response.text)
         if response.text:
             for _, meta in formasaurus.extract_forms(response.text):
                 yield FormItem(url=url, form_type=meta['form'])

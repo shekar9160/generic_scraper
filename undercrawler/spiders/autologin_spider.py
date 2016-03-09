@@ -37,7 +37,7 @@ class AutologinSpider(BaseSpider):
                 self.logger.info('Will relogin at %s', login_url)
                 # TODO - reset all pending requests
                 yield self.splash_request(login_url, dont_filter=True)
-        yield PageItem(url=response.url, body=response.body)
+        yield PageItem(url=response.url, text=response.text)
         if response.text:
             for form in formasaurus.extract_forms(response.text):
                 yield from self.handle_form(response.url, form)
