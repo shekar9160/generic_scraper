@@ -33,6 +33,7 @@ Specify url to crawl via the ``url`` param, and run the ``autologin`` spider:
 
     scrapy crawl autologin -a url=http://127.0.0.1:8001
 
+You can also specify a file to read urls from, with ``-a url=./urls.txt'``.
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
 - ``SPLASH_URL`` url of the splash instance

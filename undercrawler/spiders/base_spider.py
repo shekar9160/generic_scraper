@@ -9,12 +9,17 @@ class BaseSpider(scrapy.Spider):
     name = 'base'
 
     def __init__(self, url, *args, **kwargs):
-        self.start_url = url
-        self.link_extractor = LinkExtractor(allow=[url])
+        if url.startswith('.'):
+            with open(url) as f:
+                self.start_urls = [line.strip() for line in f]
+        else:
+            self.start_urls = [url]
+        self.link_extractor = LinkExtractor(allow=self.start_urls)
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
-        yield self.splash_request(self.start_url)
+        for url in self.start_urls:
+            yield self.splash_request(url)
 
     def splash_request(self, url, callback=None, **kwargs):
         callback = callback or self.parse
