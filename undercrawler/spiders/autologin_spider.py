@@ -4,21 +4,18 @@ from http.cookies import SimpleCookie
 from urllib.parse import urlparse
 
 import formasaurus
-import scrapy
 from scrapy.exceptions import DontCloseSpider
-from scrapy.linkextractors import LinkExtractor
 from scrapy import signals
 
 from ..items import PageItem
 from .. import autologin, login_keychain
+from .base_spider import BaseSpider
 
 
-class CrawlerSpider(scrapy.Spider):
-    name = 'crawler'
+class AutologinSpider(BaseSpider):
+    name = 'autologin'
 
-    def __init__(self, url, *args, **kwargs):
-        self.start_url = url
-        self.link_extractor = LinkExtractor(allow=[url])
+    def __init__(self, *args, **kwargs):
         self.domain_states = defaultdict(DomainState)
         super().__init__(*args, **kwargs)
 
@@ -27,13 +24,6 @@ class CrawlerSpider(scrapy.Spider):
         spider = super().from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.check_credentials, signals.spider_idle)
         return spider
-
-    def start_requests(self):
-        yield self.splash_request(self.start_url)
-
-    def splash_request(self, url, callback=None, **kwargs):
-        callback = callback or self.parse
-        return scrapy.Request(url, callback=callback, **kwargs)
 
     def parse(self, response):
         self.logger.info(response.url)

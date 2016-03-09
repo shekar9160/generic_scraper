@@ -29,9 +29,9 @@ Start splash:
 
     docker run -p 8050:8050 scrapinghub/splash
 
-Specify url to crawl via the ``url`` param:
+Specify url to crawl via the ``url`` param, and run the ``autologin`` spider:
 
-    scrapy crawl crawler -a url=http://127.0.0.1:8001
+    scrapy crawl autologin -a url=http://127.0.0.1:8001
 
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
