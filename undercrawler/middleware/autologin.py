@@ -36,11 +36,12 @@ class AutologinMiddleware:
     def process_request(self, request, spider):
         ''' Login if we are not logged in yet.
         '''
+        # TODO - splash
         if not self.logged_in:
             self.login(request)
 
     def login(self, request):
-        logger.debug('Attempting login')
+        logger.debug('Attempting login at %s', request.url)
         r = requests.post(
             urljoin(self.autologin_url, 'login-cookies'),
             data=json.dumps({
@@ -51,9 +52,13 @@ class AutologinMiddleware:
                 }),
             headers={'content-type': 'application/json'},
             )
-        cookies = r.json()
-        # TODO
-        import IPython; IPython.embed()
+        cookies = r.json().get('cookies')
+        if cookies:
+            cookie_dict = {c['name']: c['value'] for c in cookies}
+            logger.debug(
+                'Got cookies after login (%s)', ', '.join(cookie_dict))
+            request.cookies.update(cookie_dict)
+            self.auth_cookies.update(cookie_dict)
 
     def process_response(self, request, response, spider):
         ''' If we were logged out, login again and retry request.
@@ -67,6 +72,7 @@ class AutologinMiddleware:
             retryreq.dont_filter = True
             self.login(retryreq)
             return retryreq
+        return response
 
     def is_logout(self, response):
         return self.logged_in and any(
