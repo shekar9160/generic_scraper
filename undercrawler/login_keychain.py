@@ -11,8 +11,8 @@ def get_credentials(url):
             for login, password in KeychainItem.solved_by_login_url(url)]
 
 
-def add_registration_task(url):
-    KeychainItem.add_task(url)
+def add_registration_task(url, max_per_domain):
+    KeychainItem.add_task(url, max_per_domain)
 
 
 def any_unsolved():

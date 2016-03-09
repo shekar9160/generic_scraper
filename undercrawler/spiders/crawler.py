@@ -1,13 +1,13 @@
-from urllib.parse import urlparse
 from collections import defaultdict
+from functools import partial
 from http.cookies import SimpleCookie
+from urllib.parse import urlparse
 
+import formasaurus
 import scrapy
 from scrapy.exceptions import DontCloseSpider
 from scrapy.linkextractors import LinkExtractor
 from scrapy import signals
-import formasaurus
-from scrapyjs import SplashAwareDupeFilter
 
 from ..items import PageItem
 from .. import autologin, login_keychain
@@ -36,13 +36,17 @@ class CrawlerSpider(scrapy.Spider):
         return scrapy.Request(url, callback=callback, **kwargs)
 
     def parse(self, response):
+        self.logger.info(response.url)
         domain_state = self.get_domain_state(response.url)
         if self.is_logout(domain_state, response):
             self.logger.info('Logged out at %s', response.url)
             domain_state.logged_in = False
             domain_state.logout_urls.add(response.url)
-            # TODO - reset all pending requests and go to login?
-        self.logger.info(response.url)
+            login_url = domain_state.login_url
+            if login_url is not None:
+                self.logger.info('Will relogin at %s', login_url)
+                # TODO - reset all pending requests
+                yield self.splash_request(login_url, dont_filter=True)
         yield PageItem(url=response.url, body=response.body)
         if response.text:
             for form in formasaurus.extract_forms(response.text):
@@ -55,18 +59,21 @@ class CrawlerSpider(scrapy.Spider):
         _, meta = form
         form_type = meta['form']
         if form_type == 'login':
+            self.logger.info('Found a login form at %s', url)
             yield from self.try_login(url, form)
         elif form_type == 'registration':
             self.logger.info('Found a registration form at %s', url)
-            login_keychain.add_registration_task(url)
+            login_keychain.add_registration_task(
+                url, max_per_domain=10)
 
-    def handle_login_response(self, response):
+    def handle_login_response(self, response, login_url):
         domain_state = self.get_domain_state(response.url)
         if self.is_successfull_login(domain_state, response):
-            self.logger.info('Login successfull at %s', response.url)
+            self.logger.info('Login successfull at %s', login_url)
             domain_state.logged_in = True
+            domain_state.login_url = login_url
         else:
-            pass  # TODO?
+            self.logger.info('Login failed at %s', login_url)
         yield from self.parse(response)
 
     def is_successfull_login(self, domain_state, response):
@@ -94,21 +101,22 @@ class CrawlerSpider(scrapy.Spider):
         for domain_state in self.domain_states.values():
             if not domain_state.logged_in:
                 need_login = True
-                for url, form in list(domain_state.login_forms.items()):
-                    for request in self.try_login(url, form):
-                        self.crawler.engine.crawl(request, spider)
+                for url in list(domain_state.login_urls):
+                    if login_keychain.get_credentials(url):
+                        self.crawler.engine.crawl(
+                            self.splash_request(url, dont_filter=True),
+                            spider)
         if need_login and login_keychain.any_unsolved():
             self.logger.info('Waiting for credentials...')
             raise DontCloseSpider
 
     def try_login(self, url, form):
         domain_state = self.get_domain_state(url)
+        domain_state.login_urls.add(url)
         if domain_state.logged_in:
             return
-        self.logger.info('Found a login form at %s', url)
         credentials_list = login_keychain.get_credentials(url)
         if credentials_list:
-            domain_state.login_forms.pop(url, None)
             # TODO - try multiple credentials in case of failure via
             # a custom callback
             credentials = credentials_list[0]
@@ -116,9 +124,9 @@ class CrawlerSpider(scrapy.Spider):
             params = autologin.login_params(url, credentials, element, meta)
             if params:
                 yield self.splash_request(
-                    callback=self.handle_login_response, **params)
-        else:
-            domain_state.login_forms[url] = form
+                    callback=partial(
+                        self.handle_login_response, login_url=url),
+                    **params)
 
     def get_domain_state(self, url):
         return self.domain_states[urlparse(url).netloc]
@@ -134,7 +142,7 @@ def get_response_cookies(response):
 class DomainState:
     def __init__(self):
         self.logged_in = False
-        self.login_form = None
-        self.login_forms = dict()  # url: form
+        self.login_url = None
+        self.login_urls = set()
         self.logout_urls = set()
         self.auth_cookies = set()

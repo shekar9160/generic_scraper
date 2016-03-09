@@ -6,7 +6,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import flask_admin
 from flask_admin.contrib import sqla
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, sql
 from sqlalchemy.exc import IntegrityError
 
 
@@ -43,8 +43,12 @@ class KeychainItem(db.Model):
     )
 
     @classmethod
-    def add_task(cls, url):
+    def add_task(cls, url, max_per_domain):
         parts = urlsplit(url)
+        if (db.session.query(cls)
+                .filter(cls.netloc == parts.netloc)
+                .count()) >= max_per_domain:
+            return None
         item = cls(
             scheme=parts.scheme,
             netloc=parts.netloc,
@@ -57,6 +61,8 @@ class KeychainItem(db.Model):
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
+        else:
+            return item
 
     @classmethod
     def solved_by_login_url(cls, url):
@@ -74,11 +80,10 @@ class KeychainItem(db.Model):
     def any_unsolved(cls):
         ''' Are there any unsolved tasks?
         '''
-        return db.session.query(
-            db.session.query(cls)
-            .filter(cls.skip == False)
-            .filter(cls.login == None)
-            .exists())
+        return db.session.query(sql.exists().where(
+            (cls.skip == False) &
+            ((cls.login == None) | (cls.password == None))
+            )).scalar()
 
     def __unicode__(self):
         return '%s: %s' % (self.url, self.login)
