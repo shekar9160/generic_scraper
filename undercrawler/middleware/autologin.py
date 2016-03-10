@@ -39,7 +39,9 @@ class AutologinMiddleware:
     def process_request(self, request, spider):
         ''' Login if we are not logged in yet.
         '''
-        # TODO - splash
+        if '_autologin' in request.meta:
+            return
+        request.meta['_autologin'] = True
         if not self.logged_in:
             self.auth_cookies = self.get_cookies(request.url)
             self.logged_in = True
@@ -78,7 +80,7 @@ class AutologinMiddleware:
         '''
         if self.is_logout(response):
             logger.debug('Logged out at %s, will retry login', response.url)
-            self.auth_cookies = self.get_cookies(request.url)
+            self.auth_cookies = self.get_cookies(response.url)
             # TODO - could have been an expired session, do not judge too early
             self.logout_urls.add(response.url)
             raise IgnoreRequest

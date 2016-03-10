@@ -6,7 +6,7 @@ NEWSPIDER_MODULE = 'undercrawler.spiders'
 ROBOTSTXT_OBEY = False
 DEPTH_LIMIT = 20
 
-USE_SPLASH = False
+USE_SPLASH = True
 SPLASH_URL = 'http://0.0.0.0:8050'
 
 AUTOLOGIN_URL = 'http://127.0.0.1:8088'
