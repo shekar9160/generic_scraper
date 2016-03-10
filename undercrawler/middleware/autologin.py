@@ -2,6 +2,7 @@ from http.cookies import SimpleCookie
 from urllib.parse import urljoin
 import json
 import logging
+import time
 
 import requests
 from scrapy.exceptions import IgnoreRequest
@@ -30,8 +31,7 @@ class AutologinMiddleware:
         self.autologin_url = autologin_url
         self.logged_in = False
         self.logout_urls = set()
-        self.auth_cookies = dict()
-        self.retry_requests = dict()
+        self.auth_cookies = None
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -64,21 +64,28 @@ class AutologinMiddleware:
 
     def get_cookies(self, url):
         logger.debug('Attempting login at %s', url)
-        r = requests.post(
-            urljoin(self.autologin_url, '/login-cookies'),
-            data=json.dumps({
-                # FIXME
-                'url': urljoin(url, '/accounts/login/'),
-                'username': 'admin',
-                'password': 'admin',
-                }),
-            headers={'content-type': 'application/json'},
-            )
-        cookies = r.json().get('cookies')
-        if cookies:
-            cookie_dict = {c['name']: c['value'] for c in cookies}
-            logger.debug('Got cookies after login (%s)', cookie_dict)
-            return cookie_dict
+        while True:
+            request = requests.post(
+                urljoin(self.autologin_url, '/login-cookies'),
+                data=json.dumps({'url': url}),
+                headers={'content-type': 'application/json'})
+            response = request.json()
+            status = response['status']
+            logger.debug('Got login response with status "%s"', status)
+            if status == 'pending':
+                time.sleep(1.0)
+                continue
+            elif status == 'skipped':
+                return None
+            elif status == 'solved':
+                cookies = response.get('cookies')
+                if cookies:
+                    cookie_dict = {c['name']: c['value'] for c in cookies}
+                    logger.debug('Got cookies after login (%s)', cookie_dict)
+                    return cookie_dict
+                else:
+                    logger.debug('No cookies after login')
+                    return None
 
     def process_response(self, request, response, spider):
         ''' If we were logged out, login again and retry request.

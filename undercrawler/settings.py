@@ -9,7 +9,7 @@ DEPTH_LIMIT = 20
 USE_SPLASH = True
 SPLASH_URL = 'http://127.0.0.1:8050'
 
-AUTOLOGIN_URL = 'http://127.0.0.1:8088'
+AUTOLOGIN_URL = 'http://127.0.0.1:8089'
 
 DOWNLOADER_MIDDLEWARES = {
     'undercrawler.middleware.AutologinMiddleware': 584,

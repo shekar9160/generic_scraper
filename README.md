@@ -32,7 +32,8 @@ Start splash:
 
     docker run -p 8050:8050 scrapinghub/splash
 
-Start autologin service with the ``autologin-server`` command.
+Start autologin HTTP API with the ``autologin-http-api`` command,
+and the UI server with ``autologin-server``.
 
 Specify url to crawl via the ``url`` param, and run the ``base`` spider:
 
@@ -41,7 +42,7 @@ Specify url to crawl via the ``url`` param, and run the ``base`` spider:
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
 - ``SPLASH_URL`` url of the splash instance
-- ``AUTOLOGIN_URL`` url of the autologin instance
+- ``AUTOLOGIN_URL`` url of the autologin HTTP API
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
 
