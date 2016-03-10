@@ -2,18 +2,18 @@ import json
 import os.path
 
 from scrapy.http import Headers
-from scrapy.downloadermiddlewares.cookies import CookiesMiddleware
 from scrapyjs.middleware import SplashMiddleware
+from scrapyjs.utils import dict_hash
+from scrapy.dupefilters import RFPDupeFilter
+from scrapy.utils.request import request_fingerprint
 
 
-class HHSplashMiddleware(SplashMiddleware, CookiesMiddleware):
+class HHSplashMiddleware(SplashMiddleware):
     ''' Middleware that extends SplashMiddleware from scrapyjs:
     * Make all requests using headless_horseman.lua, including POST requests.
-    * Add cookies support.
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        CookiesMiddleware.__init__(self)
         # Load headless_horseman scripts
         root = os.path.join(os.path.dirname(__file__), '../directives')
         with open(os.path.join(root, 'headless_horseman.lua')) as f:
@@ -24,7 +24,6 @@ class HHSplashMiddleware(SplashMiddleware, CookiesMiddleware):
     def process_request(self, request, spider):
         if request.meta.get('_splash_processed'):
             return
-        CookiesMiddleware.process_request(self, request, spider)
         request.meta['splash'] = {
             'endpoint': 'execute',
             'args': _without_None({
@@ -62,11 +61,21 @@ class HHSplashMiddleware(SplashMiddleware, CookiesMiddleware):
                 body=data['html'],
                 encoding='utf8',
             )
-        if not request.meta.get('dont_merge_cookies', False):
-            # Replace url in request so that it matches original url
-            CookiesMiddleware.process_response(
-                self, request.replace(url=response.url), response, spider)
         return response
+
+
+class HHSplashAwareDupefilter(RFPDupeFilter):
+    ''' This is similar to SplashAwareDupeFilter, but only takes
+    url, method and body into account, not headers or other stuff.
+    '''
+    def request_fingerprint(self, request):
+        fp = request_fingerprint(request, include_headers=False)
+        if 'splash' not in request.meta:
+            return fp
+        hash_keys = {'url', 'body', 'method'}
+        to_hash = {k: v for k, v in request.meta['splash']['args'].items()
+                   if k in hash_keys}
+        return dict_hash(to_hash, fp)
 
 
 def _without_None(d):

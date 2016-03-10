@@ -6,22 +6,28 @@ NEWSPIDER_MODULE = 'undercrawler.spiders'
 ROBOTSTXT_OBEY = False
 DEPTH_LIMIT = 20
 
-SPLASH_URL = 'http://0.0.0.0:8050'
+USE_SPLASH = True
+SPLASH_URL = 'http://127.0.0.1:8050'
+
+AUTOLOGIN_URL = 'http://127.0.0.1:8089'
 
 DOWNLOADER_MIDDLEWARES = {
-    'undercrawler.middleware.HHSplashMiddleware': 585,
+    'undercrawler.middleware.AutologinMiddleware': 584,
 }
+if USE_SPLASH:
+    DOWNLOADER_MIDDLEWARES['undercrawler.middleware.HHSplashMiddleware'] = 585
+    DUPEFILTER_CLASS = 'undercrawler.middleware.HHSplashAwareDupefilter'
 
-DUPEFILTER_CLASS = 'scrapyjs.SplashAwareDupeFilter'
+COOKIES_ENABLED = False
 
 # Run full headless-horseman scripts
 RUN_HH = True
 
-# Cookies are handled in HHMiddleware
-COOKIES_ENABLED = False
-
 DOWNLOAD_DELAY = 3
-CONCURRENT_REQUESTS_PER_DOMAIN = 8
+
+# Using small values here to retry less requests due to logouts
+CONCURRENT_REQUESTS = 4
+CONCURRENT_REQUESTS_PER_DOMAIN = 4
 
 DEPTH_PRIORITY = 1
 SCHEDULER_DISK_QUEUE = 'scrapy.squeues.PickleFifoDiskQueue'
