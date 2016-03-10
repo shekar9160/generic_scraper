@@ -7,7 +7,7 @@ ROBOTSTXT_OBEY = False
 DEPTH_LIMIT = 20
 
 USE_SPLASH = True
-SPLASH_URL = 'http://0.0.0.0:8050'
+SPLASH_URL = 'http://127.0.0.1:8050'
 
 AUTOLOGIN_URL = 'http://127.0.0.1:8088'
 
@@ -16,8 +16,7 @@ DOWNLOADER_MIDDLEWARES = {
 }
 if USE_SPLASH:
     DOWNLOADER_MIDDLEWARES['undercrawler.middleware.HHSplashMiddleware'] = 585
-    # TODO - do not account for headers
-    DUPEFILTER_CLASS = 'scrapyjs.SplashAwareDupeFilter'
+    DUPEFILTER_CLASS = 'undercrawler.middleware.HHSplashAwareDupefilter'
 
 COOKIES_ENABLED = False
 

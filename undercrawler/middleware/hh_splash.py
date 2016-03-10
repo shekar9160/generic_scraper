@@ -3,6 +3,9 @@ import os.path
 
 from scrapy.http import Headers
 from scrapyjs.middleware import SplashMiddleware
+from scrapyjs.utils import dict_hash
+from scrapy.dupefilters import RFPDupeFilter
+from scrapy.utils.request import request_fingerprint
 
 
 class HHSplashMiddleware(SplashMiddleware):
@@ -59,6 +62,20 @@ class HHSplashMiddleware(SplashMiddleware):
                 encoding='utf8',
             )
         return response
+
+
+class HHSplashAwareDupefilter(RFPDupeFilter):
+    ''' This is similar to SplashAwareDupeFilter, but only takes
+    url, method and body into account, not headers or other stuff.
+    '''
+    def request_fingerprint(self, request):
+        fp = request_fingerprint(request, include_headers=False)
+        if 'splash' not in request.meta:
+            return fp
+        hash_keys = {'url', 'body', 'method'}
+        to_hash = {k: v for k, v in request.meta['splash']['args'].items()
+                   if k in hash_keys}
+        return dict_hash(to_hash, fp)
 
 
 def _without_None(d):
