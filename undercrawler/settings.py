@@ -16,6 +16,7 @@ DOWNLOADER_MIDDLEWARES = {
 }
 if USE_SPLASH:
     DOWNLOADER_MIDDLEWARES['undercrawler.middleware.HHSplashMiddleware'] = 585
+    # TODO - do not account for headers
     DUPEFILTER_CLASS = 'scrapyjs.SplashAwareDupeFilter'
 
 COOKIES_ENABLED = False
@@ -25,9 +26,9 @@ RUN_HH = True
 
 DOWNLOAD_DELAY = 3
 
-# Using minimal values here to miss less requests due to logouts
-CONCURRENT_REQUESTS = 1
-CONCURRENT_REQUESTS_PER_DOMAIN = 1
+# Using small values here to retry less requests due to logouts
+CONCURRENT_REQUESTS = 4
+CONCURRENT_REQUESTS_PER_DOMAIN = 4
 
 DEPTH_PRIORITY = 1
 SCHEDULER_DISK_QUEUE = 'scrapy.squeues.PickleFifoDiskQueue'

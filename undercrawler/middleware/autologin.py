@@ -15,8 +15,10 @@ class AutologinMiddleware:
     Autologin middleware uses autologin to make all requests while being
     logged in. It uses autologin to get cookies, detects logouts and tries
     to avoid them in the future.
-    This middleware should be placed before the CookiesMiddleware, so that
-    is "sees" the cookies in responses.
+
+    Required settings:
+    AUTOLOGIN_URL: url of where the autologin service is running
+    COOKIES_ENABLED = False (this could be relaxed perhaps)
 
     We assume a single domain in the whole process here.
     To relax this assumption, following fixes are required:
@@ -29,7 +31,6 @@ class AutologinMiddleware:
         self.logged_in = False
         self.logout_urls = set()
         self.auth_cookies = dict()
-        self.infly_requests = set()
         self.retry_requests = dict()
 
     @classmethod
@@ -41,19 +42,23 @@ class AutologinMiddleware:
         '''
         if '_autologin' in request.meta:
             return
-        request.meta['_autologin'] = True
+        # Save original request to be able to retry it in case of logout
+        request.meta['_autologin'] = {'request': request.copy()}
+
         if not self.logged_in:
             self.auth_cookies = self.get_cookies(request.url)
             self.logged_in = True
         elif request.url in self.logout_urls:
             logger.debug('Ignoring logout request %s', request.url)
             raise IgnoreRequest
+
         # Do our own "cookie" management, so that changes in self.auth_cookies
         # are applied to all future requests immediately.
         if self.auth_cookies:
             request.headers.pop('cookie', None)
             request.headers['cookie'] = '; '.join(
                 '{}={}'.format(k, v) for k, v in self.auth_cookies.items())
+            request.meta['_autologin']['cookies'] = dict(self.auth_cookies)
             logger.debug('Sending headers %s for request %s',
                         request.headers.getlist('cookie'), request)
 
@@ -79,6 +84,17 @@ class AutologinMiddleware:
         ''' If we were logged out, login again and retry request.
         '''
         if self.is_logout(response):
+            logger.debug('Logout at %s %s',
+                         response.url, response.headers.getlist('set-cookie'))
+            autologin_meta = request.meta['_autologin']
+            # We could have already done relogin after initial logout
+            if any(autologin_meta['cookies'].get(k) != v
+                    for k, v in self.auth_cookies.items()):
+                retryreq = autologin_meta['request'].copy()
+                retryreq.dont_filter = True
+                logger.debug('Stale request %s was logged out, will retry %s',
+                             response, retryreq)
+                return retryreq
             logger.debug('Logged out at %s, will retry login', response.url)
             self.auth_cookies = self.get_cookies(response.url)
             # TODO - could have been an expired session, do not judge too early
@@ -87,13 +103,15 @@ class AutologinMiddleware:
         return response
 
     def is_logout(self, response):
-        return self.auth_cookies and any(
-            name in self.auth_cookies and m.value == ''
-            for name, m in get_response_cookies(response).items())
+        return (
+            self.auth_cookies and
+            any(name in self.auth_cookies and m.value == ''
+                for name, m in get_cookies_from_header(
+                    response, 'set-cookie').items()))
 
 
-def get_response_cookies(response):
+def get_cookies_from_header(response, header_name):
     cookies = SimpleCookie()
-    for set_cookie in response.headers.getlist('set-cookie'):
+    for set_cookie in response.headers.getlist(header_name):
         cookies.load(set_cookie.decode('utf-8'))
     return cookies
