@@ -19,11 +19,12 @@ Installation
 
 Requires Python 3.4:
 
-    pip install -r requirements.lock.txt
+    pip install -r requirements.txt
     python -c "import formasaurus; formasaurus.extract_forms('a')"
 
 You also will need splash (but you can just use docker, see below),
-and install autologin separately (https://github.com/TeamHG-Memex/autologin).
+and install autologin separately (https://github.com/TeamHG-Memex/autologin),
+from the branch crawler-integration.
 
 Run crawler
 -----------
