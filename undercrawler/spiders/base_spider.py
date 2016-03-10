@@ -9,11 +9,7 @@ class BaseSpider(scrapy.Spider):
     name = 'base'
 
     def __init__(self, url, *args, **kwargs):
-        if url.startswith('.'):
-            with open(url) as f:
-                self.start_urls = [line.strip() for line in f]
-        else:
-            self.start_urls = [url]
+        self.start_urls = [url]
         self.link_extractor = LinkExtractor(allow=self.start_urls)
         super().__init__(*args, **kwargs)
 
@@ -28,10 +24,10 @@ class BaseSpider(scrapy.Spider):
     def parse(self, response):
         url = response.url
         self.logger.info(url)
-        yield PageItem(url=url) #, text=response.text)
-       #if response.text:
-       #    for _, meta in formasaurus.extract_forms(response.text):
-       #        yield FormItem(url=url, form_type=meta['form'])
-       #        self.logger.info('Found a %s form at %s', meta['form'], url)
+        yield PageItem(url=url, text=response.text)
+        if response.text:
+            for _, meta in formasaurus.extract_forms(response.text):
+                yield FormItem(url=url, form_type=meta['form'])
+                self.logger.info('Found a %s form at %s', meta['form'], url)
         for link in self.link_extractor.extract_links(response):
             yield self.splash_request(link.url)
