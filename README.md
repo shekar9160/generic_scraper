@@ -42,7 +42,8 @@ Specify url to crawl via the ``url`` param, and run the ``base`` spider:
 
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
-- ``SPLASH_URL`` url of the splash instance
-- ``AUTOLOGIN_URL`` url of the autologin HTTP API
+- ``SPLASH_URL`` - url of the splash instance
+- ``AUTOLOGIN_URL`` - url of the autologin HTTP API
+- ``AUTOLOGIN_ENABLED`` - set to 0 to disable autologin middleware
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts

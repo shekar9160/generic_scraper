@@ -10,6 +10,7 @@ USE_SPLASH = True
 SPLASH_URL = 'http://127.0.0.1:8050'
 
 AUTOLOGIN_URL = 'http://127.0.0.1:8089'
+AUTOLOGIN_ENABLED = True
 
 DOWNLOADER_MIDDLEWARES = {
     'undercrawler.middleware.AutologinMiddleware': 584,

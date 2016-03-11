@@ -5,7 +5,7 @@ import logging
 import time
 
 import requests
-from scrapy.exceptions import IgnoreRequest
+from scrapy.exceptions import IgnoreRequest, NotConfigured
 
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ class AutologinMiddleware:
     to avoid them in the future.
 
     Required settings:
+    AUTOLOGIN_ENABLED = True
     AUTOLOGIN_URL: url of where the autologin service is running
     COOKIES_ENABLED = False (this could be relaxed perhaps)
 
@@ -35,6 +36,8 @@ class AutologinMiddleware:
 
     @classmethod
     def from_crawler(cls, crawler):
+        if not crawler.settings.getbool('AUTOLOGIN_ENABLED'):
+            raise NotConfigured
         return cls(crawler.settings.get('AUTOLOGIN_URL'))
 
     def process_request(self, request, spider):
