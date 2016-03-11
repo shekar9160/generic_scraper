@@ -1,4 +1,4 @@
-from http.cookies import SimpleCookie
+from http.cookies import SimpleCookie, CookieError
 from urllib.parse import urljoin
 import json
 import logging
@@ -62,8 +62,6 @@ class AutologinMiddleware:
             request.headers['cookie'] = '; '.join(
                 '{}={}'.format(k, v) for k, v in self.auth_cookies.items())
             request.meta['_autologin']['cookies'] = dict(self.auth_cookies)
-            logger.debug('Sending headers %s for request %s',
-                        request.headers.getlist('cookie'), request)
 
     def get_cookies(self, url):
         logger.debug('Attempting login at %s', url)
@@ -84,7 +82,7 @@ class AutologinMiddleware:
                 cookies = response.get('cookies')
                 if cookies:
                     cookie_dict = {c['name']: c['value'] for c in cookies}
-                    logger.debug('Got cookies after login (%s)', cookie_dict)
+                    logger.debug('Got cookies after login %s', cookie_dict)
                     return cookie_dict
                 else:
                     logger.debug('No cookies after login')
@@ -123,5 +121,8 @@ class AutologinMiddleware:
 def get_cookies_from_header(response, header_name):
     cookies = SimpleCookie()
     for set_cookie in response.headers.getlist(header_name):
-        cookies.load(set_cookie.decode('utf-8'))
+        try:
+            cookies.load(set_cookie.decode('utf-8'))
+        except CookieError:
+            pass
     return cookies
