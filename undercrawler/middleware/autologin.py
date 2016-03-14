@@ -46,7 +46,9 @@ class AutologinMiddleware:
         if '_autologin' in request.meta:
             return
         # Save original request to be able to retry it in case of logout
-        request.meta['_autologin'] = {'request': request.copy()}
+        req_copy = request.copy()
+        req_copy.callback = req_copy.errback = None
+        request.meta['_autologin'] = {'request': req_copy}
 
         if not self.logged_in:
             self.auth_cookies = self.get_cookies(request.url)
