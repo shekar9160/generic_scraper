@@ -26,8 +26,8 @@ RUN_HH = True
 
 DOWNLOAD_DELAY = 3
 
-# Using small values here to retry less requests due to logouts
-CONCURRENT_REQUESTS = 4
+CONCURRENT_REQUESTS = 32
+# Using small value here to retry less requests due to logouts
 CONCURRENT_REQUESTS_PER_DOMAIN = 4
 
 DEPTH_PRIORITY = 1
