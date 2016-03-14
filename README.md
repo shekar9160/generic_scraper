@@ -40,6 +40,9 @@ Specify url to crawl via the ``url`` param, and run the ``base`` spider:
 
     scrapy crawl base -a url=http://127.0.0.1:8001
 
+You can also specify a file to read urls from, with ``-a url=./urls.txt'``,
+but in this case you must disable autologin with ``-s AUTOLOGIN_ENABLED=0``.
+
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
 - ``SPLASH_URL`` - url of the splash instance

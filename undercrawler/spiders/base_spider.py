@@ -9,7 +9,11 @@ class BaseSpider(scrapy.Spider):
     name = 'base'
 
     def __init__(self, url, *args, **kwargs):
-        self.start_urls = [url]
+        if url.startswith('.'):
+            with open(url) as f:
+                self.start_urls = [line.strip() for line in f]
+        else:
+            self.start_urls = [url]
         self.link_extractor = LinkExtractor(allow=self.start_urls)
         super().__init__(*args, **kwargs)
 
