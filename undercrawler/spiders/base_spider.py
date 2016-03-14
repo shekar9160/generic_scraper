@@ -2,6 +2,7 @@ import re
 import contextlib
 from datetime import datetime
 import hashlib
+from urllib.parse import urljoin
 
 import autopager
 import formasaurus
@@ -11,6 +12,7 @@ from scrapy.utils.url import canonicalize_url
 from scrapy.utils.python import unique
 
 from ..items import CDRItem
+from ..crazy_form_submitter import search_form_requests
 
 
 class BaseSpider(scrapy.Spider):
@@ -69,6 +71,9 @@ class BaseSpider(scrapy.Spider):
                     # self.logger.debug('Pagination link found: %s', url)
                     yield self.splash_request(url, meta={'is_page': True})
 
+        for form, meta in forms:
+            yield from self.handle_form(url, form, meta)
+
         # Follow all in-domain links.
         # Pagination requests are sent twice, but we don't care because
         # they're be filtered out by a dupefilter.
@@ -85,6 +90,17 @@ class BaseSpider(scrapy.Spider):
         # go to iframes
         for link in self.iframe_link_extractor.extract_links(response):
             yield self.splash_request(link.url, meta={'is_iframe': True})
+
+    def handle_form(self, url, form, meta):
+        action = urljoin(url, form.action)
+        if self.link_extractor.matches(action):
+            if meta['form'] == 'search':
+                self.logger.info('Found a search form %s', action)
+                if action not in self.handled_search_forms:
+                    self.handled_search_forms.add(action)
+                    # TODO - also some random words from the page?
+                    yield from search_form_requests(
+                        url, form, meta, callback=self.parse)
 
     def cdr_item(self, response, metadata):
         url = response.url
