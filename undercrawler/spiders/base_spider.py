@@ -1,3 +1,5 @@
+import re
+
 import formasaurus
 import scrapy
 from scrapy.linkextractors import LinkExtractor
@@ -11,10 +13,12 @@ class BaseSpider(scrapy.Spider):
     def __init__(self, url, *args, **kwargs):
         if url.startswith('.'):
             with open(url) as f:
-                self.start_urls = [line.strip() for line in f]
+                start_urls = [line.strip() for line in f]
         else:
-            self.start_urls = [url]
-        self.link_extractor = LinkExtractor(allow=self.start_urls)
+            start_urls = [url]
+        self.start_urls = [self._normalize_url(_url) for _url in start_urls]
+        self.link_extractor = LinkExtractor(
+            allow=[self._start_url_re(_url) for _url in self.start_urls])
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
@@ -35,3 +39,12 @@ class BaseSpider(scrapy.Spider):
                 self.logger.info('Found a %s form at %s', meta['form'], url)
         for link in self.link_extractor.extract_links(response):
             yield self.splash_request(link.url)
+
+    def _normalize_url(self, url):
+        if not url.startswith('http'):
+            url = 'http://' + url
+        return url
+
+    def _start_url_re(self, url):
+        http_www = r'^https?://(www\.)?'
+        return re.compile(http_www + re.sub(http_www, '', url), re.I)
