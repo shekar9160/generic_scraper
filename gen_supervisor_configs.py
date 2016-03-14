@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import argparse, os, pwd, subprocess, sys
+import argparse, os, pwd, re, subprocess, sys
 from urllib.parse import urlsplit
 
 
@@ -35,7 +35,7 @@ def main():
     for url in urls:
         name = _unique_name(url, names)
         names.add(name)
-        print(url, name)
+        print(name, url)
 
         with open(os.path.join(args.config_out_dir, name + '.conf'), 'w') as f:
             dout = lambda d, x: os.path.join(args.data_out_dir, d, x)
@@ -54,9 +54,9 @@ def main():
 
 
 def _unique_name(url, names):
-    name = urlsplit(url).netloc.replace('.', '_')
-    if name.startswith('www_'):
-        name = name[len('www_'):]
+    name = re.sub(r'(^https?://)?(www\.)?', '', url)
+    name = re.sub(r'[^a-zA-Z]', '_', name)
+    name = re.sub(r'_+', '_', name).strip('_')
     _name = name
     n = 0
     while name in names:
