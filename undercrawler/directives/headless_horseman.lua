@@ -42,7 +42,6 @@ function main(splash)
 
   splash:autoload("__headless_horseman__.patchAll();")
   splash:set_viewport_size(viewport_width, viewport_height)
-  -- TODO - handle non-200 responses?
   assert(splash:go{url, http_method=method, headers=headers, body=body})
   splash:lock_navigation()
 

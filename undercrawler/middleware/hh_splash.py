@@ -1,4 +1,5 @@
 import json
+import re
 import os.path
 
 from scrapy.http import Headers
@@ -61,6 +62,16 @@ class HHSplashMiddleware(SplashMiddleware):
                 body=data['html'],
                 encoding='utf8',
             )
+        elif 'error' in data:
+            try:
+                error = data['info']['error']
+            except KeyError:
+                error = ''
+            http_code_m = re.match(r'http(\d{3})', error)
+            response = response.replace(
+                url=request.meta['_splash_processed']['args']['url'],
+                status=int(http_code_m.groups()[0]) if http_code_m else 500,
+                )
         return response
 
 
