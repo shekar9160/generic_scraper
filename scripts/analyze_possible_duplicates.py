@@ -25,18 +25,8 @@ def analyze_file(name, f):
     urls = []
     Doc = namedtuple('Doc', ['item', 'min_hash'])
     documents = {} # key -> Doc
-    n_skips = 0
     lsh = LSH(threshold=0.9, num_perm=128)
-    n_lines = sum(1 for _ in f)
-    f.seek(0)
-    for i, line in tqdm(enumerate(f), total=n_lines):
-        if i >= n_lines:
-            break
-        try:
-            item = json.loads(line.strip('[],\n'))
-        except ValueError:
-            n_skips += 1
-            continue
+    for i, item in enumerate(item_reader(f, name)):
         urls.append(item['url'])
         text = lxml.html.document_fromstring(item['text']).text_content()
         min_hash = MinHash(num_perm=128)
@@ -48,7 +38,6 @@ def analyze_file(name, f):
         key = 'item_{}'.format(i)
         documents[key] = Doc(item, min_hash)
         lsh.insert(key, min_hash)
-    assert n_skips <= 1, (n_skips, name)
     paths = [''.join([p.netloc, p.path]) for p in map(urlsplit, urls)]
     for key, (item, min_hash) in documents.items():
         candidates = set(lsh.query(min_hash))
@@ -63,6 +52,20 @@ def analyze_file(name, f):
         len(urls), len(set(urls)), len(set(paths)),
         '%.1f' % (len(set(urls)) / len(set(paths)))])))
 
+
+def item_reader(f, name):
+    n_skips = 0
+    n_lines = sum(1 for _ in f)
+    f.seek(0)
+    for i, line in tqdm(enumerate(f), total=n_lines):
+        if i > n_lines:
+            break
+        try:
+            yield json.loads(line.strip('[],\n'))
+        except ValueError:
+            n_skips += 1
+            continue
+    assert n_skips <= 1, (n_skips, name)
 
 
 if __name__ == '__main__':
