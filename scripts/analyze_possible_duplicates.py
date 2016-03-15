@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse, json, os
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from hashlib import sha1
 from urllib.parse import urlsplit
 
@@ -26,15 +26,21 @@ def analyze_file(name, f):
     Doc = namedtuple('Doc', ['item', 'min_hash'])
     documents = {} # key -> Doc
     lsh = LSH(threshold=0.9, num_perm=128)
+    shingle_counts = defaultdict(int)
+    for item in item_reader(f, name):
+        hashes = set(shingle_h.hexdigest()
+            for shingle_h in shingle_hashes(item['text_content']))
+        for h in hashes:
+            shingle_counts[h] += 1
+    max_sh_count = max(shingle_counts.values())
+    too_common = set(h for h, count in shingle_counts.items()
+                     if count > 0.1 * max_sh_count)
     for i, item in enumerate(item_reader(f, name)):
         urls.append(item['url'])
-        text = lxml.html.document_fromstring(item['text']).text_content()
         min_hash = MinHash(num_perm=128)
-        n = 4
-        words = text.split()
-        for idx in range(n, len(words)):
-            shingle = ' '.join(words[idx - n : idx])
-            min_hash.digest(sha1(shingle.encode('utf-8')))
+        for shingle_h in shingle_hashes(item['text_content']):
+            if shingle_h.hexdigest() not in too_common:
+                min_hash.digest(shingle_h)
         key = 'item_{}'.format(i)
         documents[key] = Doc(item, min_hash)
         lsh.insert(key, min_hash)
@@ -55,17 +61,28 @@ def analyze_file(name, f):
 
 def item_reader(f, name):
     n_skips = 0
+    f.seek(0)
     n_lines = sum(1 for _ in f)
     f.seek(0)
     for i, line in tqdm(enumerate(f), total=n_lines):
         if i > n_lines:
             break
         try:
-            yield json.loads(line.strip('[],\n'))
+            item = json.loads(line.strip('[],\n'))
         except ValueError:
             n_skips += 1
             continue
+        item['text_content'] = \
+            lxml.html.document_fromstring(item['text']).text_content()
+        yield item
     assert n_skips <= 1, (n_skips, name)
+
+
+def shingle_hashes(text):
+    n = 4
+    words = text.split()
+    for idx in range(n, len(words)):
+        yield sha1(' '.join(words[idx - n : idx]).encode('utf-8'))
 
 
 if __name__ == '__main__':
