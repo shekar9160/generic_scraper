@@ -4,12 +4,13 @@ from datetime import datetime
 import hashlib
 
 import autopager
+import formasaurus
 import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.utils.url import canonicalize_url
 from scrapy.utils.python import unique
 
-from ..items import PageItem, CDRItem
+from ..items import CDRItem
 
 
 class BaseSpider(scrapy.Spider):
@@ -39,15 +40,13 @@ class BaseSpider(scrapy.Spider):
         if not self.link_extractor.matches(url):
             return
 
-        if self.settings.getbool('CDR_EXPORT'):
-            yield self.cdr_item(response)
-        else:
-            yield PageItem(
-                url=url,
-                text=response.text,
-                is_page=response.meta.get('is_page', False),
-                depth=response.meta.get('depth', None),
-                )
+        forms = formasaurus.extract_forms(response.text) if response.text \
+                else []
+        yield self.cdr_item(response, dict(
+            is_page=response.meta.get('is_page', False),
+            depth=response.meta.get('depth', None),
+            forms=[meta for _, meta in forms],
+            ))
 
         if self.settings.getbool('PREFER_PAGINATION'):
             # Follow pagination links; pagination is not a subject of
@@ -64,7 +63,7 @@ class BaseSpider(scrapy.Spider):
         for link in self.link_extractor.extract_links(response):
             yield self.splash_request(link.url)
 
-    def cdr_item(self, response):
+    def cdr_item(self, response, metadata):
         url = response.url
         timestamp = int(datetime.utcnow().timestamp() * 1000)
         return CDRItem(
@@ -73,7 +72,7 @@ class BaseSpider(scrapy.Spider):
             content_type=response.headers['content-type']\
                 .decode('ascii', 'ignore'),
             crawler=self.settings.get('CDR_CRAWLER'),
-            extracted_metadata={},
+            extracted_metadata=metadata,
             extracted_text='\n'.join(
                 response.xpath('//body').xpath('string()').extract()),
             raw_content=response.text,

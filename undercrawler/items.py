@@ -1,20 +1,6 @@
 import scrapy
 
 
-class PageItem(scrapy.Item):
-    url = scrapy.Field()
-    text = scrapy.Field()
-    is_page = scrapy.Field()
-    depth = scrapy.Field()
-
-    def __repr__(self):
-        return repr({
-            'url': self['url'],
-            'is_page': self['is_page'],
-            'depth': self['depth'],
-        })
-
-
 class CDRItem(scrapy.Item):
 
     # (url)-(crawl timestamp), SHA-256 hashed, UPPERCASE (string)
@@ -27,6 +13,10 @@ class CDRItem(scrapy.Item):
     crawler = scrapy.Field()
 
     # Tika/other extraction output (object)
+    # Our suff here:
+    #  forms: forms metadata as extracted by formasaurus
+    #  depth: page depth
+    #  is_page: this is a page reached by pagination
     extracted_metadata = scrapy.Field()
 
     # Tika/other extraction output (string)
@@ -49,5 +39,6 @@ class CDRItem(scrapy.Item):
     version = scrapy.Field()
 
     def __repr__(self):
-        fields = ['_id', 'url', 'timestamp']
-        return repr({f: self[f] for f in fields})
+        fields = ['_id', 'url', 'timestamp', 'extracted_metadata']
+        return '<CDRItem: {}>'.format(', '.join(
+            '{}: {}'.format(f, repr(self[f])) for f in fields))
