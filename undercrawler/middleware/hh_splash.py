@@ -33,6 +33,7 @@ class HHSplashMiddleware(SplashMiddleware):
                 'js_source': self.js_source,
                 'run_hh': self.crawler.settings.getbool('RUN_HH'),
                 'return_png': False,
+                'images_enabled': False,
                 'method': request.method,
                 'body': request.body.decode('utf-8') or None,
                 'headers': request.headers.to_unicode_dict(),

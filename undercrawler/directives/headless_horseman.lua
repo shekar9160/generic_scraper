@@ -13,6 +13,9 @@ function main(splash)
   n scroll, on mouseover, etc.
   ]]
 
+  splash.resource_timeout = splash.args.resource_timeout or 15
+  splash.images_enabled = get_arg(splash.args.images_enabled, true)
+
   local debug = get_arg(splash.args.debug, false)
   local run_hh = get_arg(splash.args.run_hh, true)
   local return_har = get_arg(splash.args.return_har, true)
@@ -69,7 +72,7 @@ function main(splash)
 
   -- Render and return the requested outputs.
 
-  render = {}
+  local render = {}
 
   if return_har then
     render['har'] = splash:har{reset=true}

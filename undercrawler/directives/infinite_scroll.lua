@@ -41,7 +41,7 @@ end
 
 function wait_until_height_increases(splash, old_height)
   for j=1,5 do
-    new_height = get_doc_height(splash)
+    local new_height = get_doc_height(splash)
     if new_height > old_height then
       break
     end
