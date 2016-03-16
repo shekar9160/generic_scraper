@@ -50,3 +50,4 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``AUTOLOGIN_ENABLED`` - set to 0 to disable autologin middleware
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
+- ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
