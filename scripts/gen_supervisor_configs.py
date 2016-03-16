@@ -54,7 +54,7 @@ def main():
 
 def _unique_name(url, names):
     name = re.sub(r'^(^https?://)?(www\.)?', '', url)
-    name = re.sub(r'[^a-zA-Z]', '_', name)
+    name = re.sub(r'[^a-zA-Z0-9]', '_', name)
     name = re.sub(r'_+', '_', name).strip('_')
     _name = name
     n = 0
