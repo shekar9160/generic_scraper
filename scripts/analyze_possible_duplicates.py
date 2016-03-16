@@ -41,6 +41,8 @@ def analyze_file(name, f):
             if shingle_h.hexdigest() not in too_common:
                 min_hash.digest(shingle_h)
         key = 'item_{}'.format(i)
+        del item['text_content']
+        del item['text']
         documents[key] = Doc(item, min_hash)
         lsh.insert(key, min_hash)
     paths = [''.join([p.netloc, p.path]) for p in map(urlsplit, urls)]
