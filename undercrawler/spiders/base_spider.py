@@ -1,14 +1,15 @@
 import re
 import contextlib
+from datetime import datetime
+import hashlib
 
 import autopager
-import formasaurus
 import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.utils.url import canonicalize_url
 from scrapy.utils.python import unique
 
-from ..items import PageItem, FormItem
+from ..items import PageItem, CDRItem
 
 
 class BaseSpider(scrapy.Spider):
@@ -35,17 +36,18 @@ class BaseSpider(scrapy.Spider):
 
     def parse(self, response):
         url = response.url
-        self.logger.info(url)
-        yield PageItem(
-            url=url,
-            text=response.text,
-            is_page=response.meta.get('is_page', False),
-            depth=response.meta.get('depth', None),
-            )
-        if response.text:
-            for _, meta in formasaurus.extract_forms(response.text):
-                yield FormItem(url=url, form_type=meta['form'])
-                self.logger.info('Found a %s form at %s', meta['form'], url)
+        if not self.link_extractor.matches(url):
+            return
+
+        if self.settings.getbool('CDR_EXPORT'):
+            yield self.cdr_item(response)
+        else:
+            yield PageItem(
+                url=url,
+                text=response.text,
+                is_page=response.meta.get('is_page', False),
+                depth=response.meta.get('depth', None),
+                )
 
         if self.settings.getbool('PREFER_PAGINATION'):
             # Follow pagination links; pagination is not a subject of
@@ -61,6 +63,25 @@ class BaseSpider(scrapy.Spider):
         # they're be filtered out by a dupefilter.
         for link in self.link_extractor.extract_links(response):
             yield self.splash_request(link.url)
+
+    def cdr_item(self, response):
+        url = response.url
+        timestamp = int(datetime.utcnow().timestamp() * 1000)
+        return CDRItem(
+            _id=hashlib.sha256('{}-{}'.format(url, timestamp).encode('utf-8'))\
+                .hexdigest().upper(),
+            content_type=response.headers['content-type']\
+                .decode('ascii', 'ignore'),
+            crawler=self.settings.get('CDR_CRAWLER'),
+            extracted_metadata={},
+            extracted_text='\n'.join(
+                response.xpath('//body//text()').extract()),
+            raw_content=response.text,
+            team=self.settings.get('CDR_TEAM'),
+            timestamp=timestamp,
+            url=url,
+            version=2.0,
+        )
 
     def _normalize_url(self, url):
         if not url.startswith('http'):

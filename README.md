@@ -51,3 +51,5 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
 - ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
+- ``CDR_EXPORT`` - set to 0 to disable export in CDR format
+- ``CDR_*`` - CDR export constants
