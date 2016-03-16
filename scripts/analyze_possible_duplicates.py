@@ -92,8 +92,11 @@ def item_reader(f, name, limit=None):
         except ValueError:
             n_skips += 1
             continue
-        item['text_content'] = \
-            lxml.html.document_fromstring(item['text']).text_content()
+        try:
+            doc = lxml.html.document_fromstring(item['text'])
+        except ValueError:
+            doc = lxml.html.document_fromstring(item['text'].encode('utf-8'))
+        item['text_content'] = doc.text_content()
         yield item
     assert n_skips <= 1, (n_skips, name)
 
