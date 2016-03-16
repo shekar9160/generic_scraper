@@ -75,7 +75,7 @@ class BaseSpider(scrapy.Spider):
             crawler=self.settings.get('CDR_CRAWLER'),
             extracted_metadata={},
             extracted_text='\n'.join(
-                response.xpath('//body//text()').extract()),
+                response.xpath('//body').xpath('string()').extract()),
             raw_content=response.text,
             team=self.settings.get('CDR_TEAM'),
             timestamp=timestamp,
