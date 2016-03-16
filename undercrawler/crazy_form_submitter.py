@@ -27,7 +27,7 @@ def _fill_form(search_term, form, meta, do_random_refinement=False):
 
 def refinement_input(input_type, input_el):
     return (input_type == 'search category / refinement' and
-            input_el.type in ['checkbox'])
+            getattr(input_el, 'type', None) in ['checkbox'])
 
 
 def search_form_requests(url, form, meta, **kwargs):
