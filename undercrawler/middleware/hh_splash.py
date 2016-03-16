@@ -25,6 +25,7 @@ class HHSplashMiddleware(SplashMiddleware):
     def process_request(self, request, spider):
         if request.meta.get('_splash_processed'):
             return
+        adblock = self.crawler.settings.getbool('ADBLOCK')
         request.meta['splash'] = {
             'endpoint': 'execute',
             'args': _without_None({
@@ -32,6 +33,7 @@ class HHSplashMiddleware(SplashMiddleware):
                 'lua_source': self.lua_source,
                 'js_source': self.js_source,
                 'run_hh': self.crawler.settings.getbool('RUN_HH'),
+                'filters': 'fanboy-annoyance,easylist' if adblock else None,
                 'return_png': False,
                 'images_enabled': False,
                 'method': request.method,
