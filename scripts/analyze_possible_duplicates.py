@@ -14,8 +14,7 @@ def main():
     parser.add_argument('cralwer_out_dir')
     args = parser.parse_args()
 
-    print('site'.ljust(40), '\t'.join([
-        'urls', 'set(u)', 'set(paths)', 'reduction']))
+    print('site'.ljust(40), '\t'.join(['urls', 'set(u)', 'pth', 'uniq']))
     for filename in os.listdir(args.cralwer_out_dir):
         with open(os.path.join(args.cralwer_out_dir, filename)) as f:
             analyze_file(filename, f)
@@ -27,7 +26,7 @@ def analyze_file(name, f):
     documents = {} # key -> Doc
     lsh = LSH(threshold=0.9, num_perm=128)
     shingle_counts = defaultdict(int)
-    for item in item_reader(f, name):
+    for item in item_reader(f, name, limit=300):
         hashes = set(shingle_h.hexdigest()
             for shingle_h in shingle_hashes(item['text_content']))
         for h in hashes:
@@ -45,27 +44,46 @@ def analyze_file(name, f):
         documents[key] = Doc(item, min_hash)
         lsh.insert(key, min_hash)
     paths = [''.join([p.netloc, p.path]) for p in map(urlsplit, urls)]
-    for key, (item, min_hash) in documents.items():
-        candidates = set(lsh.query(min_hash))
-        if key in candidates:
-            candidates.remove(key)
-        if candidates:
-            print()
-            print(item['url'])
-            for k in candidates:
-                print(documents[k].item['url'])
+    duplicates = get_duplicates(lsh, documents)
+    # TODO - now learn what parameters are important and what are not
     print(name.ljust(40), '\t'.join(map(str, [
         len(urls), len(set(urls)), len(set(paths)),
-        '%.1f' % (len(set(urls)) / len(set(paths)))])))
+        n_unique(documents, duplicates),
+        ])))
 
 
-def item_reader(f, name):
+def get_duplicates(lsh, documents):
+    duplicates = {}
+    for key, (item, min_hash) in documents.items():
+        dupe_keys = set(lsh.query(min_hash))
+        if key in dupe_keys:
+            dupe_keys.remove(key)
+        if dupe_keys:
+            duplicates[key] = dupe_keys
+           #print()
+           #print(item['url'])
+           #for k in dupe_keys:
+           #    print(documents[k].item['url'])
+    return duplicates
+
+
+def n_unique(documents, duplicates):
+    unique = set()
+    for key in documents:
+        if key not in duplicates or \
+                not any(k in unique for k in duplicates[key]):
+            unique.add(key)
+    return len(unique)
+
+
+def item_reader(f, name, limit=None):
     n_skips = 0
     f.seek(0)
-    n_lines = sum(1 for _ in f)
-    f.seek(0)
-    for i, line in tqdm(enumerate(f), total=n_lines):
-        if i > n_lines:
+    if limit is None:
+        limit = sum(1 for _ in f)
+        f.seek(0)
+    for i, line in tqdm(enumerate(f), total=limit):
+        if i > limit:
             break
         try:
             item = json.loads(line.strip('[],\n'))
