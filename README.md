@@ -52,3 +52,4 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
 - ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
 - ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
+- ``ADBLOCK`` - set to 1 to enable AdBlock filters (they can make crawling faster)

@@ -16,6 +16,7 @@ CDR_CRAWLER = 'scrapy undercrawler'
 CDR_TEAM = 'HG'
 
 PREFER_PAGINATION = True
+ADBLOCK = False
 
 DOWNLOADER_MIDDLEWARES = {
     'undercrawler.middleware.AutologinMiddleware': 584,
