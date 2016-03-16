@@ -1,5 +1,6 @@
 import logging
 import random
+import string
 
 from scrapy.http import FormRequest
 from scrapy.http.request.form import _get_inputs as get_form_data
@@ -7,7 +8,7 @@ from scrapy.http.request.form import _get_inputs as get_form_data
 
 logger = logging.getLogger(__name__)
 
-SEARCH_TERMS = list('ai123456789 *%.?')
+SEARCH_TERMS = list(string.ascii_lowercase) + list('123456789 *%.?')
 
 
 def _fill_form(search_term, form, meta, do_random_refinement=False):
