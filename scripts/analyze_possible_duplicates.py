@@ -41,8 +41,7 @@ def analyze_file(name, f):
             if shingle_h.hexdigest() not in too_common:
                 min_hash.digest(shingle_h)
         key = 'item_{}'.format(i)
-        del item['text_content']
-        del item['text']
+        item = {'url': item['url']}
         documents[key] = Doc(item, min_hash)
         lsh.insert(key, min_hash)
     paths = [''.join([p.netloc, p.path]) for p in map(urlsplit, urls)]
@@ -93,10 +92,14 @@ def item_reader(f, name, limit=None):
             n_skips += 1
             continue
         try:
-            doc = lxml.html.document_fromstring(item['text'])
-        except ValueError:
-            doc = lxml.html.document_fromstring(item['text'].encode('utf-8'))
-        item['text_content'] = doc.text_content()
+            text = item['extracted_text']
+        except KeyError:  # PageItem (legacy format)
+            try:
+                doc = lxml.html.document_fromstring(item['text'])
+            except ValueError:
+                doc = lxml.html.document_fromstring(text.encode('utf-8'))
+            text = doc.text_content()
+        item['text_content'] = text
         yield item
     assert n_skips <= 1, (n_skips, name)
 
