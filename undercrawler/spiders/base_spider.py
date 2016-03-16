@@ -75,7 +75,7 @@ class BaseSpider(scrapy.Spider):
         return [
             url for url in
             unique(canonicalize_url(url) for url in autopager.urls(response))
-            if url.startswith('http')
+            if self.link_extractor.matches(url)
         ]
 
 
