@@ -2,3 +2,4 @@ Scrapy==1.1.0rc3
 -e git+git@github.com:lopuhin/scrapy-splash.git@hh#egg=scrapyjs
 Formasaurus[with-deps]==0.7.1
 autopager==0.1
+datasketch==0.1.35
