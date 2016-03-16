@@ -69,7 +69,7 @@ class BaseSpider(scrapy.Spider):
 
         # urls extracted from onclick handlers
         for url in get_js_links(response):
-            priority = 0 if _looks_like_url(url) else -2
+            priority = 0 if _looks_like_url(url) else -15
             url = response.urljoin(url)
             yield self.splash_request(url, meta={'is_onclick': True},
                                       priority=priority)
