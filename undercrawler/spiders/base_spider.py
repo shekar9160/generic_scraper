@@ -161,6 +161,8 @@ def _looks_like_url(txt):
     True
     >>> _looks_like_url("foo?page=1")
     True
+    >>> _looks_like_url("x='what?'")
+    False
     >>> _looks_like_url("visit this page?")
     False
     >>> _looks_like_url("?")
@@ -170,7 +172,7 @@ def _looks_like_url(txt):
         return False
     if "/" in txt:
         return True
-    if '?' in txt and '=' in txt:
+    if re.search(r'\?\w+=.+', txt):
         return True
     if re.match(r"\w+\.html", txt):
         return True
