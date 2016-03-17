@@ -23,7 +23,7 @@ class AutologinMiddleware:
     COOKIES_ENABLED = False (this could be relaxed perhaps)
     AUTH_COOKIES: optionally, pass auth cookies after manual login
     (format is "name=value; name2=value2")
-    LOGOUT_URL: optionally, pass url prefix to avoid
+    LOGOUT_URL: optionally, pass url substring to avoid
 
     We assume a single domain in the whole process here.
     To relax this assumption, following fixes are required:
@@ -68,7 +68,7 @@ class AutologinMiddleware:
         if not self.logged_in:
             self.auth_cookies = self.get_cookies(request.url)
             self.logged_in = True
-        elif any(request.url.startswith(url) for url in self.logout_urls):
+        elif any(url in request.url for url in self.logout_urls):
             logger.debug('Ignoring logout request %s', request.url)
             raise IgnoreRequest
 
