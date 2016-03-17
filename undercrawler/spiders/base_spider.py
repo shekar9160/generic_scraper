@@ -52,12 +52,23 @@ class BaseSpider(scrapy.Spider):
         if not self.link_extractor.matches(url):
             return
 
+        request_meta = {}
+        if response.meta.get('is_search'):
+            request_meta['from_search'] = True
+
+        def request(url, meta=None, **kwargs):
+            meta = meta or {}
+            meta.update(request_meta)
+            return self.splash_request(url, meta=meta, **kwargs)
+
         forms = formasaurus.extract_forms(response.text) if response.text \
                 else []
         yield self.cdr_item(response, dict(
             is_page=response.meta.get('is_page', False),
             is_onclick=response.meta.get('is_onclick', False),
             is_iframe=response.meta.get('is_iframe', False),
+            is_search=response.meta.get('is_search', False),
+            from_search=response.meta.get('from_search', False),
             depth=response.meta.get('depth', None),
             forms=[meta for _, meta in forms],
             ))
@@ -69,8 +80,9 @@ class BaseSpider(scrapy.Spider):
             with _dont_increase_depth(response):
                 for url in self._pagination_urls(response):
                     # self.logger.debug('Pagination link found: %s', url)
-                    yield self.splash_request(url, meta={'is_page': True})
+                    yield request(url, meta={'is_page': True})
 
+        # Try submitting forms
         for form, meta in forms:
             yield from self.handle_form(url, form, meta)
 
@@ -78,18 +90,17 @@ class BaseSpider(scrapy.Spider):
         # Pagination requests are sent twice, but we don't care because
         # they're be filtered out by a dupefilter.
         for link in self.link_extractor.extract_links(response):
-            yield self.splash_request(link.url)
+            yield request(link.url)
 
         # urls extracted from onclick handlers
         for url in get_js_links(response):
             priority = 0 if _looks_like_url(url) else -15
             url = response.urljoin(url)
-            yield self.splash_request(url, meta={'is_onclick': True},
-                                      priority=priority)
+            yield request(url, meta={'is_onclick': True}, priority=priority)
 
         # go to iframes
         for link in self.iframe_link_extractor.extract_links(response):
-            yield self.splash_request(link.url, meta={'is_iframe': True})
+            yield request(link.url, meta={'is_iframe': True})
 
     def handle_form(self, url, form, meta):
         action = urljoin(url, form.action)
@@ -103,7 +114,11 @@ class BaseSpider(scrapy.Spider):
                 yield from search_form_requests(
                     url, form, meta,
                     extra_search_terms=self.extra_search_terms,
-                    callback=self.parse)
+                    request_kwargs=dict(
+                        priority=-15,
+                        meta={'is_search': True},
+                    ),
+                )
 
     def cdr_item(self, response, metadata):
         url = response.url
