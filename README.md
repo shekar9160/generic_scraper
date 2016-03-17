@@ -60,6 +60,8 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``SEARCH_TERMS_FILE`` - file with extra search terms to use (one on a line)
 - ``SPLASH_URL`` - url of the splash instance
 
+You can also pass auth cookies explicitly: see ``AutologinMiddleware`` docs.
+
 Data is stored in CDR format, we put some custom stuff into ``extracted_metadata``:
 
 - ``is_page``: page was reached via pagination

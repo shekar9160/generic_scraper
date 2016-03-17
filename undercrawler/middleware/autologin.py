@@ -21,6 +21,9 @@ class AutologinMiddleware:
     AUTOLOGIN_ENABLED = True
     AUTOLOGIN_URL: url of where the autologin service is running
     COOKIES_ENABLED = False (this could be relaxed perhaps)
+    AUTH_COOKIES: optionally, pass auth cookies after manual login
+    (format is "name=value; name2=value2")
+    LOGOUT_URL: optionally, pass url substring to avoid
 
     We assume a single domain in the whole process here.
     To relax this assumption, following fixes are required:
@@ -28,17 +31,29 @@ class AutologinMiddleware:
     - do not block event loop in login() method (instead, collect
     scheduled requests in a separate queue and make request with scrapy).
     '''
-    def __init__(self, autologin_url):
+    def __init__(self, autologin_url, auth_cookies=None, logout_url=None):
         self.autologin_url = autologin_url
-        self.logged_in = False
+        if auth_cookies:
+            cookies = SimpleCookie()
+            cookies.load(auth_cookies)
+            self.auth_cookies = {m.key: m.value for m in cookies.values()}
+            self.logged_in = True
+        else:
+            self.auth_cookies = None
+            self.logged_in = False
         self.logout_urls = set()
-        self.auth_cookies = None
+        if logout_url:
+            self.logout_urls.add(logout_url)
 
     @classmethod
     def from_crawler(cls, crawler):
         if not crawler.settings.getbool('AUTOLOGIN_ENABLED'):
             raise NotConfigured
-        return cls(crawler.settings.get('AUTOLOGIN_URL'))
+        return cls(
+            autologin_url=crawler.settings.get('AUTOLOGIN_URL'),
+            auth_cookies=crawler.settings.get('AUTH_COOKIES'),
+            logout_url=crawler.settings.get('LOGOUT_URL'),
+            )
 
     def process_request(self, request, spider):
         ''' Login if we are not logged in yet.
@@ -53,7 +68,7 @@ class AutologinMiddleware:
         if not self.logged_in:
             self.auth_cookies = self.get_cookies(request.url)
             self.logged_in = True
-        elif request.url in self.logout_urls:
+        elif any(url in request.url for url in self.logout_urls):
             logger.debug('Ignoring logout request %s', request.url)
             raise IgnoreRequest
 
