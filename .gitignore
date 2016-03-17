@@ -2,3 +2,6 @@
 venv
 undercrawler/keychain_db.sqlite
 *.txt
+*.json
+*.jl
+.cache
