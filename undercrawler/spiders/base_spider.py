@@ -25,14 +25,9 @@ class BaseSpider(scrapy.Spider):
         else:
             urls = [url]
         self.start_urls = [self._normalize_url(_url) for _url in urls]
-        # Set up in self.parse_first to handle first request redirect
-        self.allowed = []
-        self.link_extractor = None
-        self.iframe_link_extractor = None
-
-        self.handled_search_forms = set()
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
-
+        self._link_extractor = self._iframe_link_extractor = None
+        self.state = {}
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
@@ -44,12 +39,8 @@ class BaseSpider(scrapy.Spider):
         return scrapy.Request(url, callback=callback, **kwargs)
 
     def parse_first(self, response):
-        self.allowed.append(self._allowed_re(response.url))
+        self.allowed += (self._allowed_re(response.url),)
         self.logger.info('Updated allowed regexps: %s', self.allowed)
-        # Re-assign with the latest self.allowed regexps
-        self.link_extractor = LinkExtractor(allow=self.allowed)
-        self.iframe_link_extractor = LinkExtractor(
-            allow=self.allowed, tags=['iframe'], attrs=['src'])
         yield from self.parse(response)
 
     def parse(self, response):
@@ -170,6 +161,33 @@ class BaseSpider(scrapy.Spider):
             else:
                 self._extra_search_terms = []
         return self._extra_search_terms
+
+    @property
+    def allowed(self):
+        return self.state.setdefault('allowed', ())
+
+    @allowed.setter
+    def allowed(self, allowed):
+        self.state['allowed'] = allowed
+        # Reset link extractors to pick up with the latest self.allowed regexps
+        self._link_extractor = self._iframe_link_extractor = None
+
+    @property
+    def link_extractor(self):
+        if self._link_extractor is None:
+            self._link_extractor = LinkExtractor(allow=self.allowed)
+        return self._link_extractor
+
+    @property
+    def iframe_link_extractor(self):
+        if self._iframe_link_extractor is None:
+            self._iframe_link_extractor = LinkExtractor(
+                allow=self.allowed, tags=['iframe'], attrs=['src'])
+        return self._iframe_link_extractor
+
+    @property
+    def handled_search_forms(self):
+        return self.state.setdefault('handled_search_forms', set())
 
 
 @contextlib.contextmanager

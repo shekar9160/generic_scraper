@@ -7,6 +7,8 @@ tpl = '''\
 user = {user}
 environment = LANG="en_US.UTF-8", USER="{user}"
 directory = {root}
+stopsignal = INT
+stopwaitsecs = 360
 command = {scrapy} crawl base -a url={url} -s LOG_FILE={log} -o {out} -s JOBDIR={job} {extra}
 log_stderr = true
 '''
