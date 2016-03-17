@@ -54,9 +54,23 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``FORCE_TOR`` - crawl via tor to avoid blocking
+- ``MAX_DOMAIN_SEARCH_FORMS`` - max number of search forms considered for domain
 - ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
+- ``SEARCH_TERMS_FILE`` - file with extra search terms to use (one on a line)
 - ``SPLASH_URL`` - url of the splash instance
+
+Data is stored in CDR format, we put some custom stuff into ``extracted_metadata``:
+
+- ``is_page``: page was reached via pagination
+- ``is_onclick``: page url was extracted from ``onclick``, not from a normal link
+- ``is_iframe``: page url was extracted from an ``iframe``
+- ``is_search``: this is a search result page
+- ``from_search``: page was reached from search results
+- ``depth``: page depth
+- ``form``: forms metadata extracted by formasaurus
+
+Use ``./scripts/crawl_stats.py`` to analyze extracted metadata.
 
 Scripts
 -------

@@ -13,10 +13,6 @@ class CDRItem(scrapy.Item):
     crawler = scrapy.Field()
 
     # Tika/other extraction output (object)
-    # Our suff here:
-    #  forms: forms metadata as extracted by formasaurus
-    #  depth: page depth
-    #  is_page: this is a page reached by pagination
     extracted_metadata = scrapy.Field()
 
     # Tika/other extraction output (string)
