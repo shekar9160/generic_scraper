@@ -43,8 +43,6 @@ Specify url to crawl via the ``url`` param, and run the ``base`` spider:
 You can also specify a file to read urls from, with ``-a url=./urls.txt'``,
 but in this case you must disable autologin with ``-s AUTOLOGIN_ENABLED=0``,
 or ensure that all urls use common authentication.
-To have different start and allowed urls, specify ``-a start_url`` option:
-in this case ``url`` arg will be only used to limit allowed urls.
 
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
@@ -54,6 +52,8 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``FORCE_TOR`` - crawl via tor to avoid blocking
+- ``HARD_URL_CONSTRAINT`` - set to 1 to treat start urls as hard constraints
+ (by default we start from given url but crawl the whole domain)
 - ``MAX_DOMAIN_SEARCH_FORMS`` - max number of search forms considered for domain
 - ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
