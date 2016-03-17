@@ -64,5 +64,3 @@ Scripts
   show crawling stats, including ``extracted_metadata``
 * ``./scripts/gen_supervisor_configs.py``:
   generate supervisord configs for crawlers from a list of urls
-* ``./scripts/analyze_possible_duplicates.py``:
-  analyze duplicates in crawled content (should be merged into ``crawl_stats``)

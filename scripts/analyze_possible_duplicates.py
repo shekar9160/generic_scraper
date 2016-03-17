@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 import argparse, os
-from collections import namedtuple, defaultdict
-from hashlib import sha1
+from collections import namedtuple
 from urllib.parse import urlsplit
 
-from datasketch import MinHash, LSH
+from datasketch import LSH
 
-from scripts.utils import item_reader
+from scripts.utils import item_reader, get_too_common_shingles, get_min_hash
 
 
 def main():
@@ -26,21 +25,10 @@ def analyze_file(name, f, verbose=False):
     Doc = namedtuple('Doc', ['item', 'min_hash'])
     documents = {} # key -> Doc
     lsh = LSH(threshold=0.9, num_perm=128)
-    shingle_counts = defaultdict(int)
-    for item in item_reader(f, name, limit=300):
-        hashes = set(shingle_h.hexdigest()
-            for shingle_h in shingle_hashes(item['extracted_text']))
-        for h in hashes:
-            shingle_counts[h] += 1
-    max_sh_count = max(shingle_counts.values())
-    too_common = set(h for h, count in shingle_counts.items()
-                     if count > 0.1 * max_sh_count)
+    too_common = get_too_common_shingles(f, name, limit=300)
     for i, item in enumerate(item_reader(f, name)):
         urls.append(item['url'])
-        min_hash = MinHash(num_perm=128)
-        for shingle_h in shingle_hashes(item['extracted_text']):
-            if shingle_h.hexdigest() not in too_common:
-                min_hash.digest(shingle_h)
+        min_hash = get_min_hash(item, too_common)
         key = 'item_{}'.format(i)
         item = {'url': item['url']}
         documents[key] = Doc(item, min_hash)
@@ -77,13 +65,6 @@ def n_unique(documents, duplicates):
                 not any(k in unique for k in duplicates[key]):
             unique.add(key)
     return len(unique)
-
-
-def shingle_hashes(text):
-    n = 4
-    words = text.split()
-    for idx in range(n, len(words)):
-        yield sha1(' '.join(words[idx - n : idx]).encode('utf-8'))
 
 
 if __name__ == '__main__':
