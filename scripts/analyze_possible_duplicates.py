@@ -12,15 +12,16 @@ from datasketch import MinHash, LSH
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('cralwer_out_dir')
+    parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
     print('site'.ljust(40), '\t'.join(['urls', 'set(u)', 'pth', 'uniq']))
     for filename in os.listdir(args.cralwer_out_dir):
         with open(os.path.join(args.cralwer_out_dir, filename)) as f:
-            analyze_file(filename, f)
+            analyze_file(filename, f, verbose=args.verbose)
 
 
-def analyze_file(name, f):
+def analyze_file(name, f, verbose=False):
     urls = []
     Doc = namedtuple('Doc', ['item', 'min_hash'])
     documents = {} # key -> Doc
@@ -45,7 +46,7 @@ def analyze_file(name, f):
         documents[key] = Doc(item, min_hash)
         lsh.insert(key, min_hash)
     paths = [''.join([p.netloc, p.path]) for p in map(urlsplit, urls)]
-    duplicates = get_duplicates(lsh, documents)
+    duplicates = get_duplicates(lsh, documents, verbose=verbose)
     # TODO - now learn what parameters are important and what are not
     print(name.ljust(40), '\t'.join(map(str, [
         len(urls), len(set(urls)), len(set(paths)),
@@ -53,7 +54,7 @@ def analyze_file(name, f):
         ])))
 
 
-def get_duplicates(lsh, documents):
+def get_duplicates(lsh, documents, verbose=False):
     duplicates = {}
     for key, (item, min_hash) in documents.items():
         dupe_keys = set(lsh.query(min_hash))
@@ -61,10 +62,11 @@ def get_duplicates(lsh, documents):
             dupe_keys.remove(key)
         if dupe_keys:
             duplicates[key] = dupe_keys
-           #print()
-           #print(item['url'])
-           #for k in dupe_keys:
-           #    print(documents[k].item['url'])
+            if verbose:
+                print()
+                print(item['url'])
+                for k in dupe_keys:
+                    print(documents[k].item['url'])
     return duplicates
 
 
