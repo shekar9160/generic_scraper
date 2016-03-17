@@ -48,14 +48,15 @@ in this case ``url`` arg will be only used to limit allowed urls.
 
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
-- ``SPLASH_URL`` - url of the splash instance
-- ``AUTOLOGIN_URL`` - url of the autologin HTTP API
-- ``AUTOLOGIN_ENABLED`` - set to 0 to disable autologin middleware
-- ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
-- ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
-- ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
-- ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
 - ``ADBLOCK`` - set to 1 to enable AdBlock filters (they can make crawling faster)
+- ``AUTOLOGIN_ENABLED`` - set to 0 to disable autologin middleware
+- ``AUTOLOGIN_URL`` - url of the autologin HTTP API
+- ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
+- ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
+- ``FORCE_TOR`` - crawl via tor to avoid blocking
+- ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
+- ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
+- ``SPLASH_URL`` - url of the splash instance
 
 Scripts
 -------

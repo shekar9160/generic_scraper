@@ -34,6 +34,8 @@ class HHSplashMiddleware(SplashMiddleware):
                 'js_source': self.js_source,
                 'run_hh': self.crawler.settings.getbool('RUN_HH'),
                 'filters': 'fanboy-annoyance,easylist' if adblock else None,
+                'proxy': 'tor'
+                    if self.crawler.settings.getbool('FORCE_TOR') else None,
                 'return_png': False,
                 'images_enabled': False,
                 'method': request.method,
