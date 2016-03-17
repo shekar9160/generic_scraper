@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-import argparse, json, os
+import argparse, os
 from collections import namedtuple, defaultdict
 from hashlib import sha1
 from urllib.parse import urlsplit
 
-from tqdm import tqdm
-import lxml.html
 from datasketch import MinHash, LSH
+
+from scripts.utils import item_reader
 
 
 def main():
@@ -29,7 +29,7 @@ def analyze_file(name, f, verbose=False):
     shingle_counts = defaultdict(int)
     for item in item_reader(f, name, limit=300):
         hashes = set(shingle_h.hexdigest()
-            for shingle_h in shingle_hashes(item['text_content']))
+            for shingle_h in shingle_hashes(item['extracted_text']))
         for h in hashes:
             shingle_counts[h] += 1
     max_sh_count = max(shingle_counts.values())
@@ -38,7 +38,7 @@ def analyze_file(name, f, verbose=False):
     for i, item in enumerate(item_reader(f, name)):
         urls.append(item['url'])
         min_hash = MinHash(num_perm=128)
-        for shingle_h in shingle_hashes(item['text_content']):
+        for shingle_h in shingle_hashes(item['extracted_text']):
             if shingle_h.hexdigest() not in too_common:
                 min_hash.digest(shingle_h)
         key = 'item_{}'.format(i)
@@ -77,33 +77,6 @@ def n_unique(documents, duplicates):
                 not any(k in unique for k in duplicates[key]):
             unique.add(key)
     return len(unique)
-
-
-def item_reader(f, name, limit=None):
-    n_skips = 0
-    f.seek(0)
-    if limit is None:
-        limit = sum(1 for _ in f)
-        f.seek(0)
-    for i, line in tqdm(enumerate(f), total=limit):
-        if i > limit:
-            break
-        try:
-            item = json.loads(line.strip('[],\n'))
-        except ValueError:
-            n_skips += 1
-            continue
-        try:
-            text = item['extracted_text']
-        except KeyError:  # PageItem (legacy format)
-            try:
-                doc = lxml.html.document_fromstring(item['text'])
-            except ValueError:
-                doc = lxml.html.document_fromstring(text.encode('utf-8'))
-            text = doc.text_content()
-        item['text_content'] = text
-        yield item
-    assert n_skips <= 1, (n_skips, name)
 
 
 def shingle_hashes(text):

@@ -56,3 +56,13 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
 - ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
 - ``ADBLOCK`` - set to 1 to enable AdBlock filters (they can make crawling faster)
+
+Scripts
+-------
+
+* ``./scripts/crawl_stats.py``:
+  show crawling stats, including ``extracted_metadata``
+* ``./scripts/gen_supervisor_configs.py``:
+  generate supervisord configs for crawlers from a list of urls
+* ``./scripts/analyze_possible_duplicates.py``:
+  analyze duplicates in crawled content (should be merged into ``crawl_stats``)
