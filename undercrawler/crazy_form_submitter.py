@@ -30,7 +30,7 @@ def refinement_input(input_type, input_el):
             getattr(input_el, 'type', None) in ['checkbox'])
 
 
-def search_form_requests(url, form, meta, **kwargs):
+def search_form_requests(url, form, meta, extra_search_terms=None, **kwargs):
     refinement_options = [False]
     if not any(input_type == 'search query'
                for input_type in meta['fields'].values()):
@@ -43,15 +43,15 @@ def search_form_requests(url, form, meta, **kwargs):
     # 2 and 4 here are just some values that feel right, need tuning
     refinement_options.append([True] * 2 * min(4, n_target_inputs))
 
-    for search_term in SEARCH_TERMS:
+    search_terms = sorted(set(list(extra_search_terms or []) + SEARCH_TERMS))
+    for search_term in search_terms:
         for do_random_refinement in refinement_options:
             formdata = _fill_form(
                 search_term, form, meta, do_random_refinement)
             if formdata is not None:
-                logging.debug('Form request %s %s', url, formdata)
                 yield FormRequest(
                     url=url,
                     formdata=formdata,
                     method=form.method,
-                    priority=-10,
+                    priority=-15,
                     **kwargs)

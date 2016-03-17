@@ -57,6 +57,7 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``MAX_DOMAIN_SEARCH_FORMS`` - max number of search forms considered for domain
 - ``PREFER_PAGINATION`` - set to 0 to disable pagination handling
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
+- ``SEARCH_TERMS_FILE`` - file with extra search terms to use (one on a line)
 - ``SPLASH_URL`` - url of the splash instance
 
 Scripts

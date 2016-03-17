@@ -100,9 +100,10 @@ class BaseSpider(scrapy.Spider):
                     self.settings.getint('MAX_DOMAIN_SEARCH_FORMS')):
                 self.logger.debug('Found a search form at %s', url)
                 self.handled_search_forms.add(action)
-                # TODO - also some random words from the page?
                 yield from search_form_requests(
-                    url, form, meta, callback=self.parse)
+                    url, form, meta,
+                    extra_search_terms=self.extra_search_terms,
+                    callback=self.parse)
 
     def cdr_item(self, response, metadata):
         url = response.url
@@ -138,6 +139,17 @@ class BaseSpider(scrapy.Spider):
             unique(canonicalize_url(url) for url in autopager.urls(response))
             if self.link_extractor.matches(url)
         ]
+
+    @property
+    def extra_search_terms(self):
+        if self._extra_search_terms is None:
+            st_file = self.settings.get('SEARCH_TERMS_FILE')
+            if st_file:
+                with open(st_file) as f:
+                    self._extra_search_terms = [line.strip() for line in f]
+            else:
+                self._extra_search_terms = []
+        return self._extra_search_terms
 
 
 @contextlib.contextmanager
