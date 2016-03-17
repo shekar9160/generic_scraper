@@ -94,13 +94,15 @@ class BaseSpider(scrapy.Spider):
     def handle_form(self, url, form, meta):
         action = urljoin(url, form.action)
         if self.link_extractor.matches(action):
-            if meta['form'] == 'search':
-                if action not in self.handled_search_forms:
-                    self.logger.info('Found a search form at %s', url)
-                    self.handled_search_forms.add(action)
-                    # TODO - also some random words from the page?
-                    yield from search_form_requests(
-                        url, form, meta, callback=self.parse)
+            if (meta['form'] == 'search' and
+                    action not in self.handled_search_forms and
+                    len(self.handled_search_forms) <
+                    self.settings.getint('MAX_DOMAIN_SEARCH_FORMS')):
+                self.logger.debug('Found a search form at %s', url)
+                self.handled_search_forms.add(action)
+                # TODO - also some random words from the page?
+                yield from search_form_requests(
+                    url, form, meta, callback=self.parse)
 
     def cdr_item(self, response, metadata):
         url = response.url

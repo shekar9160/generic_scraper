@@ -17,6 +17,7 @@ CDR_TEAM = 'HG'
 
 PREFER_PAGINATION = True
 ADBLOCK = False
+MAX_DOMAIN_SEARCH_FORMS = 100
 
 DOWNLOADER_MIDDLEWARES = {
     'undercrawler.middleware.AutologinMiddleware': 584,
