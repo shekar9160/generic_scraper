@@ -2,7 +2,7 @@ import re
 import contextlib
 from datetime import datetime
 import hashlib
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 import autopager
 import formasaurus
@@ -18,21 +18,17 @@ from ..crazy_form_submitter import search_form_requests
 class BaseSpider(scrapy.Spider):
     name = 'base'
 
-    def __init__(self, url, start_url=None, *args, **kwargs):
+    def __init__(self, url, *args, **kwargs):
         if url.startswith('.'):
             with open(url) as f:
                 urls = [line.strip() for line in f]
         else:
             urls = [url]
-        urls = [self._normalize_url(_url) for _url in urls]
-        allow = [self._start_url_re(_url) for _url in urls]
-        self.link_extractor = LinkExtractor(allow=allow)
-        self.iframe_link_extractor = LinkExtractor(
-            allow=allow, tags=['iframe'], attrs=['src'])
-        if start_url is not None:
-            self.start_urls = [self._normalize_url(start_url)]
-        else:
-            self.start_urls = urls
+        self.start_urls = [self._normalize_url(_url) for _url in urls]
+        # Set up in self.parse_first to handle first request redirect
+        self.allowed = []
+        self.link_extractor = None
+        self.iframe_link_extractor = None
 
         self.handled_search_forms = set()
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
@@ -41,11 +37,20 @@ class BaseSpider(scrapy.Spider):
 
     def start_requests(self):
         for url in self.start_urls:
-            yield self.splash_request(url)
+            yield self.splash_request(url, callback=self.parse_first)
 
     def splash_request(self, url, callback=None, **kwargs):
         callback = callback or self.parse
         return scrapy.Request(url, callback=callback, **kwargs)
+
+    def parse_first(self, response):
+        self.allowed.append(self._allowed_re(response.url))
+        self.logger.info('Updated allowed regexps: %s', self.allowed)
+        # Re-assign with the latest self.allowed regexps
+        self.link_extractor = LinkExtractor(allow=self.allowed)
+        self.iframe_link_extractor = LinkExtractor(
+            allow=self.allowed, tags=['iframe'], attrs=['src'])
+        yield from self.parse(response)
 
     def parse(self, response):
         url = response.url
@@ -142,8 +147,10 @@ class BaseSpider(scrapy.Spider):
             url = 'http://' + url
         return url
 
-    def _start_url_re(self, url):
+    def _allowed_re(self, url):
         http_www = r'^https?://(www\.)?'
+        if not self.settings.getbool('HARD_URL_CONSTRAINT'):
+            url = urlsplit(url).netloc
         return re.compile(http_www + re.sub(http_www, '', url), re.I)
 
     def _pagination_urls(self, response):
