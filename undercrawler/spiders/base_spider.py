@@ -87,10 +87,6 @@ class BaseSpider(scrapy.Spider):
                     # self.logger.debug('Pagination link found: %s', url)
                     yield request(url, meta={'is_page': True})
 
-        # Try submitting forms
-        for form, meta in forms:
-            yield from self.handle_form(url, form, meta)
-
         # Follow all in-domain links.
         # Pagination requests are sent twice, but we don't care because
         # they're be filtered out by a dupefilter.
@@ -106,6 +102,10 @@ class BaseSpider(scrapy.Spider):
         # go to iframes
         for link in self.iframe_link_extractor.extract_links(response):
             yield request(link.url, meta={'is_iframe': True})
+
+        # Try submitting forms
+        for form, meta in forms:
+            yield from self.handle_form(url, form, meta)
 
     def handle_form(self, url, form, meta):
         action = canonicalize_url(urljoin(url, form.action))
