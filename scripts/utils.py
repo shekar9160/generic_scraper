@@ -33,15 +33,16 @@ def shingle_hashes(text):
 
 def get_too_common_shingles(f, name=None, limit=None):
     shingle_counts = defaultdict(int)
+    n_items = 0
     for item in item_reader(f, name, limit=limit):
+        n_items += 1
         hashes = set(shingle_h.hexdigest()
             for shingle_h in shingle_hashes(item['extracted_text']))
         for h in hashes:
             shingle_counts[h] += 1
     if shingle_counts:
-        max_sh_count = max(shingle_counts.values())
         return set(h for h, count in shingle_counts.items()
-                  if count > 0.1 * max_sh_count)
+                   if count > max(1, 0.05 * n_items))
     return set()
 
 
