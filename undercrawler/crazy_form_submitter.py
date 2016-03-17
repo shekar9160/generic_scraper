@@ -39,7 +39,9 @@ def search_form_requests(url, form, meta, extra_search_terms=None,
             if formdata is not None:
                 priority = -3 if do_random_refinement else -1
                 if search_term not in main_search_terms:
-                    priority = random.randint(-100, priority)
+                    min_priority = min(
+                        priority, -int(len(extra_search_terms) / 10))
+                    priority = random.randint(min_priority, priority)
                 logger.debug(
                     'Scheduled search: "%s" at %s with priority %d%s',
                     search_term, url, priority,
