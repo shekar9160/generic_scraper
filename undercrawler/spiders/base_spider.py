@@ -23,8 +23,10 @@ class BaseSpider(scrapy.Spider):
         else:
             start_urls = [url]
         self.start_urls = [self._normalize_url(_url) for _url in start_urls]
-        self.link_extractor = LinkExtractor(
-            allow=[self._start_url_re(_url) for _url in self.start_urls])
+        allow = [self._start_url_re(_url) for _url in self.start_urls]
+        self.link_extractor = LinkExtractor(allow=allow)
+        self.iframe_link_extractor = LinkExtractor(allow=allow, tags=['iframe'],
+                                                   attrs=['src'])
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
@@ -44,6 +46,8 @@ class BaseSpider(scrapy.Spider):
                 else []
         yield self.cdr_item(response, dict(
             is_page=response.meta.get('is_page', False),
+            is_onclick=response.meta.get('is_onclick', False),
+            is_iframe=response.meta.get('is_iframe', False),
             depth=response.meta.get('depth', None),
             forms=[meta for _, meta in forms],
             ))
@@ -62,6 +66,17 @@ class BaseSpider(scrapy.Spider):
         # they're be filtered out by a dupefilter.
         for link in self.link_extractor.extract_links(response):
             yield self.splash_request(link.url)
+
+        # urls extracted from onclick handlers
+        for url in get_js_links(response):
+            priority = 0 if _looks_like_url(url) else -15
+            url = response.urljoin(url)
+            yield self.splash_request(url, meta={'is_onclick': True},
+                                      priority=priority)
+
+        # go to iframes
+        for link in self.iframe_link_extractor.extract_links(response):
+            yield self.splash_request(link.url, meta={'is_iframe': True})
 
     def cdr_item(self, response, metadata):
         url = response.url
@@ -107,3 +122,58 @@ def _dont_increase_depth(response):
         yield
     finally:
         response.meta['depth'] += 1
+
+
+
+_onclick_search = re.compile("(?P<sep>('|\"))(?P<url>.+?)(?P=sep)").search
+
+def get_onclick_url(attr_value):
+    """
+    >>> get_onclick_url("window.open('page.html?productid=23','win2')")
+    'page.html?productid=23'
+    >>> get_onclick_url("window.location.href='http://www.jungleberry.co.uk/Fair-Trade-Earrings/Aguas-Earrings.htm'")
+    'http://www.jungleberry.co.uk/Fair-Trade-Earrings/Aguas-Earrings.htm'
+    """
+    m = _onclick_search(attr_value)
+    return m.group("url").strip() if m else m
+
+
+def get_js_links(response):
+    """ Extract URLs from JS. """
+    urls = [
+        get_onclick_url(value)
+        for value in response.xpath('//*/@onclick').extract()
+    ]
+    # TODO: extract all URLs from <script> tags as well?
+    return [url for url in urls if url]
+
+
+def _looks_like_url(txt):
+    """
+    Return True if text looks like an URL (probably relative).
+    >>> _looks_like_url("foo.bar")
+    False
+    >>> _looks_like_url("http://example.com")
+    True
+    >>> _looks_like_url("/page2")
+    True
+    >>> _looks_like_url("index.html")
+    True
+    >>> _looks_like_url("foo?page=1")
+    True
+    >>> _looks_like_url("x='what?'")
+    False
+    >>> _looks_like_url("visit this page?")
+    False
+    >>> _looks_like_url("?")
+    False
+    """
+    if " " in txt or "\n" in txt:
+        return False
+    if "/" in txt:
+        return True
+    if re.search(r'\?\w+=.+', txt):
+        return True
+    if re.match(r"\w+\.html", txt):
+        return True
+    return False
