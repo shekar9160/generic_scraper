@@ -27,17 +27,28 @@ def search_form_requests(url, form, meta, extra_search_terms=None,
         for input_name, input_type in meta['fields'].items())
     assert n_target_inputs >= 0
     # 2 and 4 here are just some values that feel right, need tuning
-    refinement_options.append([True] * 2 * min(4, n_target_inputs))
+    refinement_options.append([True] * 2 * min(2, n_target_inputs))
 
     request_kwargs = request_kwargs or {}
-    search_terms = sorted(set(list(extra_search_terms or []) + SEARCH_TERMS))
-    for search_term in search_terms:
+    extra_search_terms = set(extra_search_terms or [])
+    main_search_terms = set(SEARCH_TERMS)
+    for search_term in (main_search_terms | extra_search_terms):
         for do_random_refinement in refinement_options:
             formdata = _fill_search_form(
                 search_term, form, meta, do_random_refinement)
             if formdata is not None:
+                priority = -3 if do_random_refinement else -1
+                if search_term not in main_search_terms:
+                    priority = random.randint(-100, priority)
+                logger.debug(
+                    'Scheduled search: "%s" at %s with priority %d%s',
+                    search_term, url, priority,
+                    ' with random refinement' if do_random_refinement else '')
                 yield FormRequest(
-                    url=url, formdata=formdata, method=form.method,
+                    url=url,
+                    formdata=formdata,
+                    method=form.method,
+                    priority=priority,
                     **request_kwargs)
 
 

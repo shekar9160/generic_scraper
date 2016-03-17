@@ -103,7 +103,7 @@ class BaseSpider(scrapy.Spider):
             yield request(link.url, meta={'is_iframe': True})
 
     def handle_form(self, url, form, meta):
-        action = urljoin(url, form.action)
+        action = canonicalize_url(urljoin(url, form.action))
         if not self.link_extractor.matches(action):
             return
         if (meta['form'] == 'search' and
@@ -115,10 +115,7 @@ class BaseSpider(scrapy.Spider):
             yield from search_form_requests(
                 url, form, meta,
                 extra_search_terms=self.extra_search_terms,
-                request_kwargs=dict(
-                    priority=-15,
-                    meta={'is_search': True},
-                ),
+                request_kwargs=dict(meta={'is_search': True}),
             )
 
     def cdr_item(self, response, metadata):
