@@ -104,21 +104,22 @@ class BaseSpider(scrapy.Spider):
 
     def handle_form(self, url, form, meta):
         action = urljoin(url, form.action)
-        if self.link_extractor.matches(action):
-            if (meta['form'] == 'search' and
-                    action not in self.handled_search_forms and
-                    len(self.handled_search_forms) <
-                    self.settings.getint('MAX_DOMAIN_SEARCH_FORMS')):
-                self.logger.debug('Found a search form at %s', url)
-                self.handled_search_forms.add(action)
-                yield from search_form_requests(
-                    url, form, meta,
-                    extra_search_terms=self.extra_search_terms,
-                    request_kwargs=dict(
-                        priority=-15,
-                        meta={'is_search': True},
-                    ),
-                )
+        if not self.link_extractor.matches(action):
+            return
+        if (meta['form'] == 'search' and
+                action not in self.handled_search_forms and
+                len(self.handled_search_forms) <
+                self.settings.getint('MAX_DOMAIN_SEARCH_FORMS')):
+            self.logger.debug('Found a search form at %s', url)
+            self.handled_search_forms.add(action)
+            yield from search_form_requests(
+                url, form, meta,
+                extra_search_terms=self.extra_search_terms,
+                request_kwargs=dict(
+                    priority=-15,
+                    meta={'is_search': True},
+                ),
+            )
 
     def cdr_item(self, response, metadata):
         url = response.url
