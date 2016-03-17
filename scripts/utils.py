@@ -14,7 +14,7 @@ def item_reader(f, name=None, limit=None):
         f.seek(0)
     for i, line in tqdm(enumerate(f), total=limit):
         if i > limit:
-            break
+            continue
         try:
             item = json.loads(line.strip('[],\n'))
         except ValueError:
@@ -38,10 +38,11 @@ def get_too_common_shingles(f, name=None, limit=None):
             for shingle_h in shingle_hashes(item['extracted_text']))
         for h in hashes:
             shingle_counts[h] += 1
-    max_sh_count = max(shingle_counts.values())
-    too_common = set(h for h, count in shingle_counts.items()
-                     if count > 0.1 * max_sh_count)
-    return too_common
+    if shingle_counts:
+        max_sh_count = max(shingle_counts.values())
+        return set(h for h, count in shingle_counts.items()
+                  if count > 0.1 * max_sh_count)
+    return set()
 
 
 def get_min_hash(item, too_common):
