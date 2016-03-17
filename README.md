@@ -43,6 +43,8 @@ Specify url to crawl via the ``url`` param, and run the ``base`` spider:
 You can also specify a file to read urls from, with ``-a url=./urls.txt'``,
 but in this case you must disable autologin with ``-s AUTOLOGIN_ENABLED=0``,
 or ensure that all urls use common authentication.
+To have different start and allowed urls, specify ``-a start_url`` option:
+in this case ``url`` arg will be only used to limit allowed urls.
 
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 

@@ -16,17 +16,25 @@ from ..items import CDRItem
 class BaseSpider(scrapy.Spider):
     name = 'base'
 
-    def __init__(self, url, *args, **kwargs):
+    def __init__(self, url, start_url=None, *args, **kwargs):
         if url.startswith('.'):
             with open(url) as f:
-                start_urls = [line.strip() for line in f]
+                urls = [line.strip() for line in f]
         else:
-            start_urls = [url]
-        self.start_urls = [self._normalize_url(_url) for _url in start_urls]
-        allow = [self._start_url_re(_url) for _url in self.start_urls]
+            urls = [url]
+        urls = [self._normalize_url(_url) for _url in urls]
+        allow = [self._start_url_re(_url) for _url in urls]
         self.link_extractor = LinkExtractor(allow=allow)
-        self.iframe_link_extractor = LinkExtractor(allow=allow, tags=['iframe'],
-                                                   attrs=['src'])
+        self.iframe_link_extractor = LinkExtractor(
+            allow=allow, tags=['iframe'], attrs=['src'])
+        if start_url is not None:
+            self.start_urls = [self._normalize_url(start_url)]
+        else:
+            self.start_urls = urls
+
+        self.handled_search_forms = set()
+        self._extra_search_terms = None  # lazy-loaded via extra_search_terms
+
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
