@@ -45,6 +45,8 @@ class HHSplashMiddleware(SplashMiddleware):
 
     def process_response(self, request, response, spider):
         response = super().process_response(request, response, spider)
+        if response.status in [500, 502, 503, 504]:
+            return response
         data = json.loads(response.text)
         if 'url' in data:
             headers = Headers()
