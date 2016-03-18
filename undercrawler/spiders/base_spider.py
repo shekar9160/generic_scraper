@@ -50,6 +50,7 @@ class BaseSpider(scrapy.Spider):
 
         request_meta = {
             'from_search': response.meta.get('is_search'),
+            'extracted_at': url,
         }
         def request(url, meta=None, **kwargs):
             meta = meta or {}
@@ -64,6 +65,7 @@ class BaseSpider(scrapy.Spider):
             is_iframe=response.meta.get('is_iframe', False),
             is_search=response.meta.get('is_search', False),
             from_search=response.meta.get('from_search', False),
+            extracted_at=response.meta.get('extracted_at', None),
             depth=response.meta.get('depth', None),
             forms=[meta for _, meta in forms],
             ))

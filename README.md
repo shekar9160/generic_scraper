@@ -65,6 +65,7 @@ You can also pass auth cookies explicitly: see ``AutologinMiddleware`` docs.
 Data is stored in CDR format, we put some custom stuff into ``extracted_metadata``:
 
 - ``depth``: page depth
+- ``extracted_at``: a page where this link was (first) extracted
 - ``form``: forms metadata extracted by formasaurus
 - ``from_search``: page was reached from search results
 - ``is_iframe``: page url was extracted from an ``iframe``
