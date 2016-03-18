@@ -6,13 +6,16 @@ from tqdm import tqdm
 from datasketch import MinHash
 
 
-def item_reader(f, name=None, limit=None):
+def item_reader(f, name=None, limit=None, skip_limit=False):
     n_skips = 0
     f.seek(0)
-    if limit is None:
+    if limit is None or skip_limit:
         limit = sum(1 for _ in f)
         f.seek(0)
-    for i, line in tqdm(enumerate(f), total=limit):
+    it = enumerate(f)
+    if not skip_limit:
+        it = tqdm(it, total=limit)
+    for i, line in it:
         if i > limit:
             continue
         try:
