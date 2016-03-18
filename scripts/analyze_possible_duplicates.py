@@ -10,15 +10,19 @@ from scripts.utils import item_reader, get_too_common_shingles, get_min_hash
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('cralwer_out_dir')
+    parser.add_argument('crawler_out')
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
     print('site'.ljust(40), '\t'.join(['urls', 'set(u)', 'pth', 'uniq']))
-    for filename in os.listdir(args.cralwer_out_dir):
-        with open(os.path.join(args.cralwer_out_dir, filename)) as f:
-            analyze_file(filename, f, verbose=args.verbose)
-
+    if os.path.isdir(args.crawler_out):
+        for filename in os.listdir(args.crawler_out):
+            with open(os.path.join(args.crawler_out, filename)) as f:
+                analyze_file(filename, f, verbose=args.verbose)
+    else:
+        with open(args.crawler_out) as f:
+            analyze_file(os.path.basename(args.crawler_out), f,
+                         verbose=args.verbose)
 
 def analyze_file(name, f, verbose=False):
     urls = []
