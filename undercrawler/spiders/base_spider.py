@@ -48,10 +48,9 @@ class BaseSpider(scrapy.Spider):
         if not self.link_extractor.matches(url):
             return
 
-        request_meta = {}
-        if response.meta.get('is_search'):
-            request_meta['from_search'] = True
-
+        request_meta = {
+            'from_search': response.meta.get('is_search'),
+        }
         def request(url, meta=None, **kwargs):
             meta = meta or {}
             meta.update(request_meta)

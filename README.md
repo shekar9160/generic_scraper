@@ -64,13 +64,13 @@ You can also pass auth cookies explicitly: see ``AutologinMiddleware`` docs.
 
 Data is stored in CDR format, we put some custom stuff into ``extracted_metadata``:
 
-- ``is_page``: page was reached via pagination
-- ``is_onclick``: page url was extracted from ``onclick``, not from a normal link
-- ``is_iframe``: page url was extracted from an ``iframe``
-- ``is_search``: this is a search result page
-- ``from_search``: page was reached from search results
 - ``depth``: page depth
 - ``form``: forms metadata extracted by formasaurus
+- ``from_search``: page was reached from search results
+- ``is_iframe``: page url was extracted from an ``iframe``
+- ``is_onclick``: page url was extracted from ``onclick``, not from a normal link
+- ``is_page``: page was reached via pagination
+- ``is_search``: this is a search result page
 
 Use ``./scripts/crawl_stats.py`` to analyze extracted metadata.
 
