@@ -44,13 +44,12 @@ class BaseSpider(scrapy.Spider):
         yield from self.parse(response)
 
     def parse(self, response):
-        url = response.url
-        if not self.link_extractor.matches(url):
+        if not self.link_extractor.matches(response.url):
             return
 
         request_meta = {
             'from_search': response.meta.get('is_search'),
-            'extracted_at': url,
+            'extracted_at': response.url,
         }
         def request(url, meta=None, **kwargs):
             meta = meta or {}
@@ -97,7 +96,7 @@ class BaseSpider(scrapy.Spider):
 
         # Try submitting forms
         for form, meta in forms:
-            yield from self.handle_form(url, form, meta)
+            yield from self.handle_form(response.url, form, meta)
 
     def handle_form(self, url, form, meta):
         action = canonicalize_url(urljoin(url, form.action))
