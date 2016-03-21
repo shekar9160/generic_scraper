@@ -103,6 +103,7 @@ class BaseSpider(scrapy.Spider):
         if not self.link_extractor.matches(action):
             return
         if (meta['form'] == 'search' and
+                self.settings.getbool('CRAZY_SEARCH_ENABLED') and
                 action not in self.handled_search_forms and
                 len(self.handled_search_forms) <
                 self.settings.getint('MAX_DOMAIN_SEARCH_FORMS')):

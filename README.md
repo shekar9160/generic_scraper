@@ -50,6 +50,7 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``AUTOLOGIN_ENABLED`` - set to 0 to disable autologin middleware
 - ``AUTOLOGIN_URL`` - url of the autologin HTTP API
 - ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
+- ``CRAZY_SEARCH_ENABLED`` - set to 0 to disable submitting search forms
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``FORCE_TOR`` - crawl via tor to avoid blocking
 - ``HARD_URL_CONSTRAINT`` - set to 1 to treat start urls as hard constraints
