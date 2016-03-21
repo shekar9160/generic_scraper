@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import argparse, os
-from collections import namedtuple, defaultdict, Counter
-from urllib.parse import urlsplit, parse_qs, urlencode
+from collections import namedtuple, defaultdict
+from urllib.parse import urlsplit, parse_qs
 
 from datasketch import LSH
+from scrapy.utils.url import canonicalize_url
 
 from scripts.utils import item_reader, get_too_common_shingles, get_min_hash
 
@@ -18,7 +19,8 @@ def main():
     args = parser.parse_args()
     fn = globals()[args.action]
 
-    print('site'.ljust(40), '\t'.join(['urls', 'set(u)', 'pth', 'uniq']))
+    if args.action == 'analyze_file':
+        print('site'.ljust(40), '\t'.join(['urls', 'set(u)', 'pth', 'uniq']))
     if os.path.isdir(args.crawler_out):
         for filename in os.listdir(args.crawler_out):
             with open(os.path.join(args.crawler_out, filename)) as f:
@@ -81,7 +83,8 @@ def learn_duplicates(name, f, verbose=False):
     lsh = LSH(threshold=threshold, num_perm=128)
     too_common = get_too_common_shingles(f, name, limit=300)
 
-    crawled_urls = {}  # url: min_hash
+    URLMeta = namedtuple('URLMeta', ['path', 'query', 'min_hash'])
+    crawled_urls = {}  # url: URLMeta
     urls_by_path = defaultdict(set)  # path: {url}
     urls_by_path_q = defaultdict(set)  # (path, q): {url}
     urls_by_path_qwp = defaultdict(set)  # (path, param, q): {url}
@@ -103,18 +106,28 @@ def learn_duplicates(name, f, verbose=False):
     # TODO - moar power:
     # more than one get param?
 
+    def _print_dupstats():
+        for ds, name in [
+                (path_dupstats, 'Path dupstats'),
+                (param_dupstats, 'Param dupstats'),
+                (path_param_dupstats, 'Path-param dupstats'),
+                (path_query_param_dupstats, 'Path-query-param dupstats'),
+                (param_value_dupstats, 'Param-value dupstats'),
+                (path_param_value_dupstats, 'Path-param-value dupstats'),
+                ]:
+            print_dupstats(ds, name)
+
     for i, item in enumerate(item_reader(f, name)):
         min_hash = get_min_hash(item, too_common)
-        item_path, item_query = parse_url(item['url'])
-        item_url = unparse_url(item_path, item_query)
-        duplicates = [(url, query) for url, (path, query) in (
-            (url, parse_url(url)) for url in lsh.query(min_hash))
-            if path == item_path]
+        item_url = canonicalize_url(item['url'])
+        item_path, item_query = parse_url(item_url)
+        duplicates = [(url, m.query) for url, m in (
+            (url, crawled_urls[url]) for url in lsh.query(min_hash))
+            if m.path == item_path]
 
-        path_dupstat = path_dupstats[item_path]
-        path_dupstat.update(
-            duplicates,
-            urls_by_path[item_path].difference(url for url, _ in duplicates))
+        path_nodup = (
+            urls_by_path[item_path] .difference(url for url, _ in duplicates))
+        path_dupstats[item_path].update(duplicates, path_nodup)
 
         for param, value in item_query.items():
             # qwp = "query without param"
@@ -130,7 +143,7 @@ def learn_duplicates(name, f, verbose=False):
                 .difference(q_dup))
             for ds in [param_dupstats[param],
                        path_param_dupstats[item_path, param],
-                       path_query_param_dupstats[item_path, item_qwp_key, param],
+                       path_query_param_dupstats[item_path, param, item_qwp_key],
                        ]:
                 ds.update(q_dup, q_nodup)
 
@@ -144,20 +157,14 @@ def learn_duplicates(name, f, verbose=False):
             urls_by_path_q[item_path, item_q_key].add(item_url)
             urls_by_path_qwp[item_path, param, item_qwp_key].add(item_url)
 
-        if i % 100 == 0:
-            for ds, name in [
-                    (path_dupstats, 'Path dupstats'),
-                    (param_dupstats, 'Param dupstats'),
-                    (path_param_dupstats, 'Path-param dupstats'),
-                    (path_query_param_dupstats, 'Path-query-param dupstats'),
-                    (param_value_dupstats, 'Param-value dupstats'),
-                    (path_param_value_dupstats, 'Path-param-value dupstats'),
-                    ]:
-                print_dupstats(ds, name)
+        if verbose and i % 100 == 0:
+            _print_dupstats()
 
         lsh.insert(item_url, min_hash)
-        crawled_urls[item_url] = min_hash
+        crawled_urls[item_url] = URLMeta(item_path, item_query, min_hash)
         urls_by_path[item_path].add(item_url)
+
+    _print_dupstats()
 
 
 def _without_key(dict_, key):
@@ -192,18 +199,10 @@ class DupStat:
         return '<DupStat: ({}, {})>'.format(self.dup, self.nodup)
 
 
-URL = namedtuple('URL', ['path', 'query'])
-
-
 def parse_url(url):
     p = urlsplit(url)
-    # TODO - multiple values
-    query = {k: v[0] for k, v in parse_qs(p.query).items()}
-    return URL(''.join([p.netloc, p.path]), query)
-
-
-def unparse_url(path, query):
-    return '?'.join([path, urlencode(sorted(query.items()))])
+    query = {k: v[0] for k, v in parse_qs(p.query).items() if len(v) == 1}
+    return ''.join([p.netloc, p.path]), query
 
 
 if __name__ == '__main__':
