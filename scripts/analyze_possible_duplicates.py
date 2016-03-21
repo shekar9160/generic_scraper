@@ -212,7 +212,8 @@ class DupStat:
         self.nodup += nodup if isinstance(nodup, int) else len(nodup)
 
     def __repr__(self):
-        return '<DupStat: ({}, {})>'.format(self.dup, self.nodup)
+        return '<DupStat: {:.0f}% (of {})>'.format(
+            100 * self.dup / self.total, self.total)
 
 
 def parse_url(url):
