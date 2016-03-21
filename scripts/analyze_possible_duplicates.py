@@ -82,17 +82,19 @@ def learn_duplicates(name, f, verbose=False):
     too_common = get_too_common_shingles(f, name, limit=300)
 
     crawled_urls = {}  # url: min_hash
-    urls_by_path = defaultdict(list)  # path: [url]
+    urls_by_path = defaultdict(list)  # path: [(url, query)]
 
-    # 3 duplicate hypothesis                     # Key:
-    # All items with given path are duplicates
-    path_dupstats = defaultdict(DupStat)         # path
-    # All items with same path that differ in given param are duplicates
-    param_dupstats = defaultdict(DupStat)        # param
-    # All items with same path with added param=value are duplicates
-    param_value_dupstats = defaultdict(DupStat)  # (param, value)
-    # TODO - another hypothesis is like all above, but include one param+value
-    # from query into the path
+    # Duplicate hypotheses                            # Key:
+    # All items with same path are duplicates         #
+    path_dupstats = defaultdict(DupStat)              # path
+    # All items with same path that differ only in given param are duplicates
+    param_dupstats = defaultdict(DupStat)             # param
+    # Same but conditioned by path                    #
+    path_param_dupstats = defaultdict(DupStat)        # (path, param)
+    # All items with same path with only added param=value are duplicates
+    param_value_dupstats = defaultdict(DupStat)       # (param, value)
+    # Same but conditioned by path                    #
+    path_param_value_dupstats = defaultdict(DupStat)  # (path, param, value)
 
     for i, item in enumerate(item_reader(f, name)):
         min_hash = get_min_hash(item, too_common)
@@ -107,19 +109,34 @@ def learn_duplicates(name, f, verbose=False):
         _update_dupstats(path_dupstats[item_path])
 
         for param, value in item_query.items():
-            _update_dupstats(
-                param_dupstats[param], lambda q: q.get(param) != value)
-            _update_dupstats(
-                param_value_dupstats[(param, value)], lambda q: param not in q)
+            item_q_without_param = _without_key(item_query, param)
+            for ds in [param_dupstats[param],
+                       path_param_dupstats[item_path, param]]:
+                _update_dupstats(
+                    ds, lambda q: (
+                        item_q_without_param == _without_key(q, param)
+                        and q.get(param) != value))
+            for ds in [param_value_dupstats[param, value],
+                       path_param_value_dupstats[item_path, param, value]]:
+                _update_dupstats(ds, lambda q: item_q_without_param == q)
 
         if i % 100 == 0:
-            print_dupstats(path_dupstats, 'Path dupstats')
-            print_dupstats(param_dupstats, 'Param dupstats')
-            print_dupstats(param_value_dupstats, 'Param-value dupstats')
+            for ds, name in [
+                    (path_dupstats, 'Path dupstats'),
+                    (param_dupstats, 'Param dupstats'),
+                    (path_param_dupstats, 'Path-param dupstats'),
+                    (param_value_dupstats, 'Param-value dupstats'),
+                    (path_param_value_dupstats, 'Path-param-value dupstats'),
+                    ]:
+                print_dupstats(ds, name)
 
         lsh.insert(item_url, min_hash)
         crawled_urls[item_url] = min_hash
-        urls_by_path[item_path].append(item_url)
+        urls_by_path[item_path].append((item_url, item_query))
+
+
+def _without_key(dict_, key):
+    return {k: v for k, v in dict_.items() if k != key}
 
 
 def update_dupstats(dupstat, duplicates, urls_by_path, item_path, fn=None):
@@ -127,7 +144,7 @@ def update_dupstats(dupstat, duplicates, urls_by_path, item_path, fn=None):
     duplicates = {url for url, (path, query) in duplicates if fn(query)}
     dupstat.dup += len(duplicates)
     dupstat.nodup += len(
-        {url for url in urls_by_path[item_path] if fn(parse_url(url).query)}
+        {url for url, query in urls_by_path[item_path] if fn(query)}
         .difference(duplicates))
 
 
