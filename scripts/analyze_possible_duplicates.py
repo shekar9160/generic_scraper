@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import argparse, os
+import argparse, os, random
 from collections import namedtuple, defaultdict
 from urllib.parse import urlsplit, parse_qs
 
@@ -117,6 +117,22 @@ def learn_duplicates(name, f, verbose=False):
                 ]:
             print_dupstats(ds, name)
 
+    def nodup_filter(min_hash, all_urls, max_sample=200):
+        ''' This filters results that are considered not duplicates.
+        But we really need to check that, because lsh.query does not always
+        return ALL duplicates, esp. when there are a lot of them, so
+        here we double-check and return only urls that are NOT duplicates.
+        Return estimated number of not duplicates.
+        '''
+        if not all_urls:
+            return 0
+        urls = random.sample(all_urls, max_sample) \
+               if len(all_urls) > max_sample else all_urls
+        filtered = [
+            url for url in urls
+            if min_hash.jaccard(crawled_urls[url].min_hash) < threshold]
+        return int(len(filtered) / len(urls) * len(all_urls))
+
     for i, item in enumerate(item_reader(f, name)):
         min_hash = get_min_hash(item, too_common)
         item_url = canonicalize_url(item['url'])
@@ -125,8 +141,8 @@ def learn_duplicates(name, f, verbose=False):
             (url, crawled_urls[url]) for url in lsh.query(min_hash))
             if m.path == item_path]
 
-        path_nodup = (
-            urls_by_path[item_path] .difference(url for url, _ in duplicates))
+        path_nodup = nodup_filter(min_hash,
+            urls_by_path[item_path].difference(url for url, _ in duplicates))
         path_dupstats[item_path].update(duplicates, path_nodup)
 
         for param, value in item_query.items():
@@ -137,10 +153,10 @@ def learn_duplicates(name, f, verbose=False):
 
             q_dup = {url for url, q in duplicates
                      if _without_key(q, param) == item_qwp}
-            q_nodup = (
+            q_nodup = nodup_filter(min_hash, (
                 urls_by_path_qwp[item_path, param, item_qwp_key]
                 .union(urls_by_path_q[item_path, item_qwp_key])
-                .difference(q_dup))
+                .difference(q_dup)))
             for ds in [param_dupstats[param],
                        path_param_dupstats[item_path, param],
                        path_query_param_dupstats[item_path, param, item_qwp_key],
@@ -148,8 +164,8 @@ def learn_duplicates(name, f, verbose=False):
                 ds.update(q_dup, q_nodup)
 
             qv_dup = {url for url, q in duplicates if q == item_qwp}
-            qv_nodup = (
-                urls_by_path_q[item_path, item_qwp_key].difference(qv_dup))
+            qv_nodup = nodup_filter(min_hash, (
+                urls_by_path_q[item_path, item_qwp_key].difference(qv_dup)))
             for ds in [param_value_dupstats[param, value],
                        path_param_value_dupstats[item_path, param, value]]:
                 ds.update(qv_dup, qv_nodup)
@@ -193,7 +209,7 @@ class DupStat:
 
     def update(self, dup, nodup):
         self.dup += len(dup)
-        self.nodup += len(nodup)
+        self.nodup += nodup if isinstance(nodup, int) else len(nodup)
 
     def __repr__(self):
         return '<DupStat: ({}, {})>'.format(self.dup, self.nodup)
