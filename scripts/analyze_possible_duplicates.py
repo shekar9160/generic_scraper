@@ -98,37 +98,19 @@ def learn_duplicates(name, f, verbose=False):
         min_hash = get_min_hash(item, too_common)
         item_path, item_query = parse_url(item['url'])
         item_url = unparse_url(item_path, item_query)
-        duplicates = [(url, parse_url(url)) for url in set(lsh.query(min_hash))]
+        duplicates = [(url, parsed) for url, parsed in (
+            (url, parse_url(url)) for url in lsh.query(min_hash))
+            if parsed.path == item_path]
 
-        path_duplicates = {
-            url for url, (path, _)  in duplicates if path == item_path}
-        path_dupstat = path_dupstats[item_path]
-        path_dupstat.dup += len(path_duplicates)
-        path_dupstat.nodup += len(
-            set(urls_by_path[item_path]).difference(path_duplicates))
+        _update_dupstats = lambda ds, fn=None: update_dupstats(
+            ds, duplicates, urls_by_path, item_path, fn=fn)
+        _update_dupstats(path_dupstats[item_path])
 
         for param, value in item_query.items():
-            # TODO - factor out repeating code
-            param_duplicates = {
-                url for url, (path, query) in duplicates
-                if path == item_path and query.get(param) != value}
-            param_dupstat = param_dupstats[param]
-            param_dupstat.dup += len(param_duplicates)
-            # TODO - index urls with the same path by (param, value)
-            param_dupstat.nodup += len(
-                {url for url in urls_by_path[item_path]
-                    if parse_url(url).query.get(param) != value}
-                .difference(param_duplicates))
-
-            param_value_duplicates = {
-                url for url, (path, query) in duplicates
-                if path == item_path and param not in query}
-            param_value_dupstat = param_value_dupstats[(param, value)]
-            param_value_dupstat.dup += len(param_value_duplicates)
-            param_value_dupstat.nodup += len(
-                {url for url in urls_by_path[item_path]
-                 if param not in parse_url(url).query}
-                .difference(param_value_duplicates))
+            _update_dupstats(
+                param_dupstats[param], lambda q: q.get(param) != value)
+            _update_dupstats(
+                param_value_dupstats[(param, value)], lambda q: param not in q)
 
         if i % 100 == 0:
             print_dupstats(path_dupstats, 'Path dupstats')
@@ -138,6 +120,15 @@ def learn_duplicates(name, f, verbose=False):
         lsh.insert(item_url, min_hash)
         crawled_urls[item_url] = min_hash
         urls_by_path[item_path].append(item_url)
+
+
+def update_dupstats(dupstat, duplicates, urls_by_path, item_path, fn=None):
+    fn = fn or (lambda q: True)
+    duplicates = {url for url, (path, query) in duplicates if fn(query)}
+    dupstat.dup += len(duplicates)
+    dupstat.nodup += len(
+        {url for url in urls_by_path[item_path] if fn(parse_url(url).query)}
+        .difference(duplicates))
 
 
 def print_dupstats(dupstats, name):
