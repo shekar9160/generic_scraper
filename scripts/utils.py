@@ -29,9 +29,12 @@ def item_reader(f, name=None, limit=None, skip_limit=False):
 
 def shingle_hashes(text):
     n = 4
-    words = text.split()
-    for idx in range(n, len(words)):
-        yield sha1(' '.join(words[idx - n : idx]).encode('utf-8'))
+    for line in text.split('\n'):
+        words = line.strip().split()
+        if words:
+            for idx in range(min(len(words), n), len(words) + 1):
+                yield sha1(' '.join(
+                    words[max(0, idx - n) : idx]).encode('utf-8'))
 
 
 def get_too_common_shingles(f, name=None, limit=None):
