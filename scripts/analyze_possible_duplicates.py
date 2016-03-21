@@ -91,10 +91,14 @@ def learn_duplicates(name, f, verbose=False):
     param_dupstats = defaultdict(DupStat)             # param
     # Same but conditioned by path                    #
     path_param_dupstats = defaultdict(DupStat)        # (path, param)
+    # Same but conditioned by path + the rest of the query
+    path_query_param_dupstats = defaultdict(DupStat)  # (path, param)
     # All items with same path with only added param=value are duplicates
     param_value_dupstats = defaultdict(DupStat)       # (param, value)
     # Same but conditioned by path                    #
     path_param_value_dupstats = defaultdict(DupStat)  # (path, param, value)
+    # TODO - moar power:
+    # more than one get param?
 
     for i, item in enumerate(item_reader(f, name)):
         min_hash = get_min_hash(item, too_common)
@@ -110,8 +114,11 @@ def learn_duplicates(name, f, verbose=False):
 
         for param, value in item_query.items():
             item_q_without_param = _without_key(item_query, param)
+            qwp_key = tuple(sorted(item_q_without_param.items()))
             for ds in [param_dupstats[param],
-                       path_param_dupstats[item_path, param]]:
+                       path_param_dupstats[item_path, param],
+                       path_query_param_dupstats[item_path, qwp_key, param],
+                       ]:
                 _update_dupstats(
                     ds, lambda q: (
                         item_q_without_param == _without_key(q, param)
@@ -125,6 +132,7 @@ def learn_duplicates(name, f, verbose=False):
                     (path_dupstats, 'Path dupstats'),
                     (param_dupstats, 'Param dupstats'),
                     (path_param_dupstats, 'Path-param dupstats'),
+                    (path_query_param_dupstats, 'Path-query-param dupstats'),
                     (param_value_dupstats, 'Param-value dupstats'),
                     (path_param_value_dupstats, 'Path-param-value dupstats'),
                     ]:
