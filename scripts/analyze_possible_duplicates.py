@@ -82,7 +82,10 @@ def learn_duplicates(name, f, verbose=False):
     too_common = get_too_common_shingles(f, name, limit=300)
 
     crawled_urls = {}  # url: min_hash
-    urls_by_path = defaultdict(list)  # path: [(url, query)]
+    urls_by_path = defaultdict(set)  # path: {url}
+    urls_by_path_q = defaultdict(set)  # (path, q): {url}
+    urls_by_path_qwp = defaultdict(set)  # (path, param, q): {url}
+
 
     # Duplicate hypotheses                            # Key:
     # All items with same path are duplicates         #
@@ -104,28 +107,42 @@ def learn_duplicates(name, f, verbose=False):
         min_hash = get_min_hash(item, too_common)
         item_path, item_query = parse_url(item['url'])
         item_url = unparse_url(item_path, item_query)
-        duplicates = [(url, parsed) for url, parsed in (
+        duplicates = [(url, query) for url, (path, query) in (
             (url, parse_url(url)) for url in lsh.query(min_hash))
-            if parsed.path == item_path]
+            if path == item_path]
 
-        _update_dupstats = lambda ds, fn=None: update_dupstats(
-            ds, duplicates, urls_by_path, item_path, fn=fn)
-        _update_dupstats(path_dupstats[item_path])
+        path_dupstat = path_dupstats[item_path]
+        path_dupstat.update(
+            duplicates,
+            urls_by_path[item_path].difference(url for url, _ in duplicates))
 
         for param, value in item_query.items():
-            item_q_without_param = _without_key(item_query, param)
-            qwp_key = tuple(sorted(item_q_without_param.items()))
+            # qwp = "query without param"
+            item_q_key = tuple(sorted(item_query.items()))
+            item_qwp = _without_key(item_query, param)
+            item_qwp_key = tuple(sorted(item_qwp.items()))
+
+            q_dup = {url for url, q in duplicates
+                     if _without_key(q, param) == item_qwp}
+            q_nodup = (
+                urls_by_path_qwp[item_path, param, item_qwp_key]
+                .union(urls_by_path_q[item_path, item_qwp_key])
+                .difference(q_dup))
             for ds in [param_dupstats[param],
                        path_param_dupstats[item_path, param],
-                       path_query_param_dupstats[item_path, qwp_key, param],
+                       path_query_param_dupstats[item_path, item_qwp_key, param],
                        ]:
-                _update_dupstats(
-                    ds, lambda q: (
-                        item_q_without_param == _without_key(q, param)
-                        and q.get(param) != value))
+                ds.update(q_dup, q_nodup)
+
+            qv_dup = {url for url, q in duplicates if q == item_qwp}
+            qv_nodup = (
+                urls_by_path_q[item_path, item_qwp_key].difference(qv_dup))
             for ds in [param_value_dupstats[param, value],
                        path_param_value_dupstats[item_path, param, value]]:
-                _update_dupstats(ds, lambda q: item_q_without_param == q)
+                ds.update(qv_dup, qv_nodup)
+
+            urls_by_path_q[item_path, item_q_key].add(item_url)
+            urls_by_path_qwp[item_path, param, item_qwp_key].add(item_url)
 
         if i % 100 == 0:
             for ds, name in [
@@ -140,20 +157,11 @@ def learn_duplicates(name, f, verbose=False):
 
         lsh.insert(item_url, min_hash)
         crawled_urls[item_url] = min_hash
-        urls_by_path[item_path].append((item_url, item_query))
+        urls_by_path[item_path].add(item_url)
 
 
 def _without_key(dict_, key):
     return {k: v for k, v in dict_.items() if k != key}
-
-
-def update_dupstats(dupstat, duplicates, urls_by_path, item_path, fn=None):
-    fn = fn or (lambda q: True)
-    duplicates = {url for url, (path, query) in duplicates if fn(query)}
-    dupstat.dup += len(duplicates)
-    dupstat.nodup += len(
-        {url for url, query in urls_by_path[item_path] if fn(query)}
-        .difference(duplicates))
 
 
 def print_dupstats(dupstats, name):
@@ -175,6 +183,10 @@ class DupStat:
     @property
     def total(self):
         return self.dup + self.nodup
+
+    def update(self, dup, nodup):
+        self.dup += len(dup)
+        self.nodup += len(nodup)
 
     def __repr__(self):
         return '<DupStat: ({}, {})>'.format(self.dup, self.nodup)
