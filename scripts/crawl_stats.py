@@ -4,7 +4,8 @@ from collections import Counter
 
 from datasketch import LSH
 
-from scripts.utils import item_reader, get_too_common_shingles, get_min_hash
+from undercrawler.utils import get_min_hash
+from scripts.utils import item_reader, get_too_common_shingles
 
 
 def main():
@@ -45,7 +46,7 @@ def print_stats(f, show=None, skip_unique=False):
                 if key == show:
                     print(item['url'])
         if not skip_unique:
-            min_hash = get_min_hash(item, too_common)
+            min_hash = get_min_hash(item['extracted_text'], too_common)
             if not lsh.query(min_hash):
                 meta_counts.update(['unique_items'])
             lsh.insert('item_{}'.format(i), min_hash)

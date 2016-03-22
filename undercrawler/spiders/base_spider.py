@@ -14,6 +14,7 @@ from scrapy.utils.python import unique
 from ..utils import cached_property
 from ..items import CDRItem
 from ..crazy_form_submitter import search_form_requests
+from ..utils import extract_text
 
 
 class BaseSpider(scrapy.Spider):
@@ -142,8 +143,7 @@ class BaseSpider(scrapy.Spider):
             response.url, metadata,
             content_type=response.headers['content-type']\
                 .decode('ascii', 'ignore'),
-            extracted_text='\n'.join(
-                response.xpath('//body').xpath('string()').extract()),
+            extracted_text=extract_text(response),
             raw_content=response.text,
             )
 
