@@ -53,6 +53,7 @@ class DupePredictor:
         # Same but conditioned by path, key is (path, param, value)
         self.path_param_value_dupstats = defaultdict(DupStat)
         # TODO - more powerful hypotheses:
+        # - param + value without path
         # - more than one get param
 
     def get_dupe_prob(self, url):
@@ -65,11 +66,12 @@ class DupePredictor:
             dupestats.append(self.path_dupstats[path])
         for param, value in query.items():
             qwp_key = _q_key(_without_key(query, param))
-            # Have we seen the query with param changed...
-            if self.urls_by_path_qwp.get((path, param, qwp_key)):
+            # Have we seen the query with param changed or removed?
+            changed_param = self.urls_by_path_qwp.get((path, param, qwp_key))
+            removed_param = self.urls_by_path_q.get((path, qwp_key))
+            if changed_param or removed_param:
                 dupestats.extend(self._param_dupstats(path, param, qwp_key))
-            # ... or removed?
-            if self.urls_by_path_q.get((path, qwp_key)):
+            if removed_param:
                 dupestats.extend(
                     self._param_value_dupstats(path, param, value))
         # TODO - a case when a more specialized url comes first, and now
@@ -116,6 +118,7 @@ class DupePredictor:
 
             self.urls_by_path_q[item_path, _q_key(item_query)].add(item_url)
             self.urls_by_path_qwp[item_path, param, item_qwp_key].add(item_url)
+        self.urls_by_path_q[item_path, ()].add(item_url)
 
         if len(self.seen_urls) % 100 == 0:
             self._log_dupstats()
