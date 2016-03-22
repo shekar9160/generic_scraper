@@ -45,8 +45,8 @@ def get_too_common_shingles(texts):
     return set()
 
 
-def get_min_hash(text, too_common):
-    min_hash = MinHash(num_perm=128)
+def get_min_hash(text, too_common, num_perm=128):
+    min_hash = MinHash(num_perm=num_perm)
     for shingle_h in shingle_hashes(text):
         if shingle_h.hexdigest() not in too_common:
             min_hash.digest(shingle_h)

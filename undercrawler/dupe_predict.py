@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class DupePredictor:
     ''' Learn to predict if the content is duplicate by the URL.
     '''
-    def __init__(self, texts_sample=None, jaccard_threshold=0.9):
+    def __init__(self, texts_sample=None, jaccard_threshold=0.9, num_perm=128):
         ''' Initialize DupePredictor.
         :param jaccard_threshold: a minimal jaccard similarity when pages
         are considered duplicates (intersection of content / union of content).
@@ -24,7 +24,9 @@ class DupePredictor:
         for each page.
         '''
         self.jaccard_threshold = jaccard_threshold
-        self.lsh = LSH(threshold=self.jaccard_threshold, num_perm=128)
+        self.num_perm = num_perm
+        self.lsh = LSH(
+            threshold=self.jaccard_threshold, num_perm=self.num_perm)
         self.too_common_shingles = set()
         if texts_sample:
             self.too_common_shingles = get_too_common_shingles(texts_sample)
@@ -57,20 +59,28 @@ class DupePredictor:
         ''' A probability of given url being a duplicate of some content
         that has already been seem.
         '''
-        # TODO - check that url has already been crawled
         path, query = _parse_url(url)
-        dupestats = [self.path_dupstats[path]]
+        dupestats = []
+        if self.urls_by_path.get(path):
+            dupestats.append(self.path_dupstats[path])
         for param, value in query.items():
             qwp_key = _q_key(_without_key(query, param))
-            dupestats.extend(self._param_dupstats(path, param, qwp_key))
-            dupestats.extend(self._param_value_dupstats(path, param, value))
-        return max(ds.get_prob() for ds in dupestats)
+            # Have we seen the query with param changed...
+            if self.urls_by_path_qwp.get((path, param, qwp_key)):
+                dupestats.extend(self._param_dupstats(path, param, qwp_key))
+            # ... or removed?
+            if self.urls_by_path_q.get((path, qwp_key)):
+                dupestats.extend(
+                    self._param_value_dupstats(path, param, value))
+        # TODO - a case when a more specialized url comes first, and now
+        # we see a less specialized one
+        return max(ds.get_prob() for ds in dupestats) if dupestats else 0.
 
     def update_model(self, url, text):
         ''' Update prediction model with a page by given url and text content.
-        Return whether the item was a duplicate (for testing purposes).
+        Return a list of item duplicates (for testing purposes).
         '''
-        min_hash = get_min_hash(text, self.too_common_shingles)
+        min_hash = get_min_hash(text, self.too_common_shingles, self.num_perm)
         item_url = canonicalize_url(url)
         item_path, item_query = _parse_url(item_url)
         all_duplicates = [
@@ -113,7 +123,7 @@ class DupePredictor:
         self.lsh.insert(item_url, min_hash)
         self.seen_urls[item_url] = URLMeta(item_path, item_query, min_hash)
         self.urls_by_path[item_path].add(item_url)
-        return bool(all_duplicates)
+        return all_duplicates
 
     def _param_dupstats(self, path, param, qwp_key):
         return [
@@ -209,5 +219,5 @@ class DupStat:
         return p - 1.96 * math.sqrt(p * q / n)
 
     def __repr__(self):
-        return '<DupStat: {:.0f}% (of {})>'.format(
-            100 * self.dup / self.total, self.total)
+        return '<DupStat: {:.0f}% ({} of {})>'.format(
+            100 * self.get_prob(), self.dup, self.total)

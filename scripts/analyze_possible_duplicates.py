@@ -7,7 +7,7 @@ from datasketch import LSH
 from scrapy.utils.url import canonicalize_url
 
 from undercrawler.utils import get_min_hash
-from undercrawler.dupe_predict import DupePredictor
+from undercrawler.dupe_predict import DupePredictor, _parse_url
 from scripts.utils import item_reader, get_too_common_shingles
 
 
@@ -87,21 +87,33 @@ def learn_duplicates(name, f, verbose=False):
 
     threshold = 0.98
     y_pred, y_true = [], []
+    def _report_pr():
+        tp = sum(p > threshold and d for p, d in zip(y_pred, y_true))
+        fp = sum(p > threshold and not d for p, d in zip(y_pred, y_true))
+        fn = sum(p < threshold and d for p, d in zip(y_pred, y_true))
+        n_dup = tp + fn
+        print('precision: %.3f, recall %.3f at %.2f threshold '
+                '(%d duplicates)' % (
+            tp / (tp + fp) if tp else 0.,
+            tp / n_dup if n_dup else 0., threshold, n_dup))
     for i, item in enumerate(item_reader(f, name)):
         dupe_prob = dupe_predictor.get_dupe_prob(item['url'])
         y_pred.append(dupe_prob)
-        is_duplicate = \
+        duplicates = \
             dupe_predictor.update_model(item['url'], item['extracted_text'])
-        y_true.append(float(is_duplicate))
+        y_true.append(bool(duplicates))
+        if verbose:
+            if duplicates and dupe_prob < threshold:
+                path, _ = _parse_url(item['url'])
+                sample = [(url, meta) for url, meta in duplicates
+                          if meta.path == path] or duplicates
+                print('false negative %s (%s, %d more)' % (
+                    item['url'], sample[0][0], len(sample) - 1))
+            elif not duplicates and dupe_prob > threshold:
+                print('false positive', item['url'])
         if i % 100 == 0:
-            from sklearn.metrics import average_precision_score
-            print('average precision: %.3f (%d duplicates), '
-                  '%d false positives at %.2f threshold' % (
-                average_precision_score(y_true, y_pred),
-                sum(y_true),
-                sum(p > threshold and not d for p, d in zip(y_pred, y_true)),
-                threshold,
-                ))
+            _report_pr()
+    _report_pr()
 
 
 if __name__ == '__main__':
