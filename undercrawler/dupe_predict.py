@@ -1,5 +1,4 @@
-import logging
-import random
+import logging, random, math
 from collections import namedtuple, defaultdict
 from urllib.parse import urlsplit, parse_qs
 
@@ -54,18 +53,30 @@ class DupePredictor:
         # TODO - more powerful hypotheses:
         # - more than one get param
 
-    def dupe_prob(self, url):
-        return .0
+    def get_dupe_prob(self, url):
+        ''' A probability of given url being a duplicate of some content
+        that has already been seem.
+        '''
+        # TODO - check that url has already been crawled
+        path, query = _parse_url(url)
+        dupestats = [self.path_dupstats[path]]
+        for param, value in query.items():
+            qwp_key = _q_key(_without_key(query, param))
+            dupestats.extend(self._param_dupstats(path, param, qwp_key))
+            dupestats.extend(self._param_value_dupstats(path, param, value))
+        return max(ds.get_prob() for ds in dupestats)
 
     def update_model(self, url, text):
         ''' Update prediction model with a page by given url and text content.
+        Return whether the item was a duplicate (for testing purposes).
         '''
         min_hash = get_min_hash(text, self.too_common_shingles)
         item_url = canonicalize_url(url)
         item_path, item_query = _parse_url(item_url)
-        duplicates = [(url, m.query) for url, m in (
-            (url, self.seen_urls[url]) for url in self.lsh.query(min_hash))
-            if m.path == item_path]
+        all_duplicates = [
+            (url, self.seen_urls[url]) for url in self.lsh.query(min_hash)]
+        duplicates = [(url, m.query) for url, m in all_duplicates
+                      if m.path == item_path]
 
         n_path_nodup = self._nodup_filter(min_hash, (
             self.urls_by_path[item_path]
@@ -74,9 +85,8 @@ class DupePredictor:
 
         for param, value in item_query.items():
             # qwp = "query without param"
-            item_q_key = tuple(sorted(item_query.items()))
             item_qwp = _without_key(item_query, param)
-            item_qwp_key = tuple(sorted(item_qwp.items()))
+            item_qwp_key = _q_key(item_qwp)
 
             q_dup = {url for url, q in duplicates
                      if _without_key(q, param) == item_qwp}
@@ -84,23 +94,17 @@ class DupePredictor:
                 self.urls_by_path_qwp[item_path, param, item_qwp_key]
                 .union(self.urls_by_path_q[item_path, item_qwp_key])
                 .difference(q_dup)))
-            for ds in [self.param_dupstats[param],
-                       self.path_param_dupstats[item_path, param],
-                       self.path_query_param_dupstats[
-                           item_path, param, item_qwp_key],
-                       ]:
+            for ds in self._param_dupstats(item_path, param, item_qwp_key):
                 ds.update(len(q_dup), n_q_nodup)
 
             qv_dup = {url for url, q in duplicates if q == item_qwp}
             n_qv_nodup = self._nodup_filter(min_hash, (
                 self.urls_by_path_q[item_path, item_qwp_key]
                 .difference(qv_dup)))
-            for ds in [
-                    self.param_value_dupstats[param, value],
-                    self.path_param_value_dupstats[item_path, param, value]]:
+            for ds in self._param_value_dupstats(item_path, param, value):
                 ds.update(len(qv_dup), n_qv_nodup)
 
-            self.urls_by_path_q[item_path, item_q_key].add(item_url)
+            self.urls_by_path_q[item_path, _q_key(item_query)].add(item_url)
             self.urls_by_path_qwp[item_path, param, item_qwp_key].add(item_url)
 
         if len(self.seen_urls) % 100 == 0:
@@ -109,6 +113,20 @@ class DupePredictor:
         self.lsh.insert(item_url, min_hash)
         self.seen_urls[item_url] = URLMeta(item_path, item_query, min_hash)
         self.urls_by_path[item_path].add(item_url)
+        return bool(all_duplicates)
+
+    def _param_dupstats(self, path, param, qwp_key):
+        return [
+            self.param_dupstats[param],
+            self.path_param_dupstats[path, param],
+            self.path_query_param_dupstats[path, param, qwp_key],
+            ]
+
+    def _param_value_dupstats(self, path, param, value):
+        return [
+            self.param_value_dupstats[param, value],
+            self.path_param_value_dupstats[path, param, value],
+            ]
 
     def _nodup_filter(self, min_hash, all_urls, max_sample=200):
         ''' This filters results that are considered not duplicates.
@@ -149,6 +167,10 @@ def _parse_url(url):
     return ''.join([p.netloc, p.path]), query
 
 
+def _q_key(query):
+    return tuple(sorted(query.items()))
+
+
 def _log_dupstats(dupstats, name, min_dup):
     dupstats_items = [
         (url, dupstat) for url, dupstat in sorted(
@@ -175,6 +197,16 @@ class DupStat:
     def update(self, dup, nodup):
         self.dup += dup
         self.nodup += nodup
+
+    def get_prob(self):
+        if self.total < 5:
+            return 0.
+        a, b = self.dup + 1, self.nodup + 1
+        n = a + b
+        p = a / n
+        q = b / n
+        # Lower edge of the 95% confidence interval, binomial distribution
+        return p - 1.96 * math.sqrt(p * q / n)
 
     def __repr__(self):
         return '<DupStat: {:.0f}% (of {})>'.format(

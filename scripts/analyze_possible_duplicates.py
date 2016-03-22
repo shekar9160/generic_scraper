@@ -85,8 +85,23 @@ def learn_duplicates(name, f, verbose=False):
         item['extracted_text'] for item in item_reader(f, name, limit=300)]
     dupe_predictor = DupePredictor(texts_sample)
 
-    for item in item_reader(f, name):
-        dupe_predictor.update_model(item['url'], item['extracted_text'])
+    threshold = 0.98
+    y_pred, y_true = [], []
+    for i, item in enumerate(item_reader(f, name)):
+        dupe_prob = dupe_predictor.get_dupe_prob(item['url'])
+        y_pred.append(dupe_prob)
+        is_duplicate = \
+            dupe_predictor.update_model(item['url'], item['extracted_text'])
+        y_true.append(float(is_duplicate))
+        if i % 100 == 0:
+            from sklearn.metrics import average_precision_score
+            print('average precision: %.3f (%d duplicates), '
+                  '%d false positives at %.2f threshold' % (
+                average_precision_score(y_true, y_pred),
+                sum(y_true),
+                sum(p > threshold and not d for p, d in zip(y_pred, y_true)),
+                threshold,
+                ))
 
 
 if __name__ == '__main__':

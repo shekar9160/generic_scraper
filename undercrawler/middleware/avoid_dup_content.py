@@ -29,7 +29,7 @@ class AvoidDupContentMiddleware:
         return cls()
 
     def process_request(self, request, spider):
-        dupe_prob = self.dupe_predictor.dupe_prob(request.url)
+        dupe_prob = self.dupe_predictor.get_dupe_prob(request.url)
         # TODO - lower priority for some requests
         if dupe_prob > 0.98:
             logger.debug('Ignoring a likely duplicate %s with prob %3.f',
