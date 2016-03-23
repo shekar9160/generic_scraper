@@ -121,7 +121,7 @@ class DupePredictor:
         self.urls_by_path_q[item_path, ()].add(item_url)
 
         if len(self.seen_urls) % 100 == 0:
-            self._log_dupstats()
+            self.log_dupstats()
 
         self.lsh.insert(item_url, min_hash)
         self.seen_urls[item_url] = URLMeta(item_path, item_query, min_hash)
@@ -158,7 +158,7 @@ class DupePredictor:
             self.jaccard_threshold]
         return int(len(filtered) / len(urls) * len(all_urls))
 
-    def _log_dupstats(self, min_dup=100):
+    def log_dupstats(self, min_dup=100):
         for ds, name in [
                 (self.path_dupstats, 'Path dupstats'),
                 (self.param_dupstats, 'Param dupstats'),
