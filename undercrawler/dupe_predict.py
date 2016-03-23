@@ -36,6 +36,7 @@ class DupePredictor:
         self.urls_by_path_q = defaultdict(set)  # (path, q): {url}
         self.urls_by_path_qwp = defaultdict(set)  # (path, param, q): {url}
         self.params_by_path = defaultdict(set)  # path: {param}
+        self.param_values = defaultdict(set)  # (path, param): {value}
 
         # Duplicate hypotheses:
         # (1) All items with same path are duplicates. Key is (path,)
@@ -82,7 +83,11 @@ class DupePredictor:
             added_param = self.urls_by_path_qwp.get((path, param, q_key))
             if added_param:
                 dupestats.extend(self._param_dupstats(path, param, q_key))
-            # TODO - support for (5, 6)
+                # FIXME - this could be a long list of param values,
+                # it's better to somehow store only high-probability values?
+                for value in self.param_values[path, param]:
+                    dupestats.extend(
+                        self._param_value_dupstats(path, param, value))
         return max(ds.get_prob() for ds in dupestats) if dupestats else 0.
 
     def update_model(self, url, text):
@@ -104,19 +109,21 @@ class DupePredictor:
         # Other hypotheses, if param is in the query
         for param, value in item_query.items():
             self._update_with_param(
-                duplicates, min_hash, item_path, item_query, param, value)
+                duplicates, min_hash, item_path, item_query, param, [value])
         # Other hypotheses, if param is not in the query
         for param in (self.params_by_path[item_path] - set(item_query)):
-            # TODO - we lack value support for (5, 6) atm
             self._update_with_param(
-                duplicates, min_hash, item_path, item_query, param)
+                duplicates, min_hash, item_path, item_query, param,
+                self.param_values[item_path, param])
         # Update indexes
         for param, value in item_query.items():
             self.urls_by_path_q[item_path, _q_key(item_query)].add(item_url)
             item_qwp_key = _q_key(_without_key(item_query, param))
             self.urls_by_path_qwp[item_path, param, item_qwp_key].add(item_url)
             self.params_by_path[item_path].add(param)
-        self.urls_by_path_q[item_path, ()].add(item_url)
+            self.param_values[item_path, param].add(value)
+        if not item_query:
+            self.urls_by_path_q[item_path, ()].add(item_url)
         self.urls_by_path[item_path].add(item_url)
         self.lsh.insert(item_url, min_hash)
         self.seen_urls[item_url] = URLMeta(item_path, item_query, min_hash)
@@ -125,7 +132,7 @@ class DupePredictor:
         return all_duplicates
 
     def _update_with_param(self, duplicates, min_hash, item_path, item_query,
-                           param, value=None):
+                           param, values):
         # qwp = "query without param"
         item_qwp = _without_key(item_query, param)
         item_qwp_key = _q_key(item_qwp)
@@ -138,14 +145,25 @@ class DupePredictor:
             .difference(q_dup)))
         for ds in self._param_dupstats(item_path, param, item_qwp_key):
             ds.update(len(q_dup), n_q_nodup)
-
-        if value is not None:
-            qv_dup = {url for url, q in duplicates if q == item_qwp}
-            n_qv_nodup = self._nodup_filter(min_hash, (
-                self.urls_by_path_q[item_path, item_qwp_key]
-                .difference(qv_dup)))
-            for ds in self._param_value_dupstats(item_path, param, value):
-                ds.update(len(qv_dup), n_qv_nodup)
+        if values:
+            if param in item_query:
+                qv_dup = {url for url, q in duplicates if q == item_qwp}
+                n_qv_nodup = self._nodup_filter(min_hash, (
+                    self.urls_by_path_q[item_path, item_qwp_key]
+                    .difference(qv_dup)))
+            # FIXME - this could be a long list of param values,
+            # it's better to somehow store only high-probability values?
+            for value in values:
+                if param not in item_query:
+                    qv_dup = {url for url, q in duplicates
+                        if q.get(param) == value and
+                        _without_key(q, param) == item_qwp}
+                    qap_key = _q_key(_with_key_val(item_query, param, value))
+                    n_qv_nodup = self._nodup_filter(min_hash, (
+                        self.urls_by_path_q[item_path, qap_key]
+                        .difference(qv_dup)))
+                for ds in self._param_value_dupstats(item_path, param, value):
+                    ds.update(len(qv_dup), n_qv_nodup)
 
     def _param_dupstats(self, path, param, qwp_key):
         return [
@@ -191,6 +209,12 @@ class DupePredictor:
 
 def _without_key(dict_, key):
     return {k: v for k, v in dict_.items() if k != key}
+
+
+def _with_key_val(dict_, key, value):
+    dict_ = dict(dict_)
+    dict_[key] = value
+    return dict_
 
 
 def _parse_url(url):
