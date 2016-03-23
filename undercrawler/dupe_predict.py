@@ -65,6 +65,7 @@ class DupePredictor:
         dupestats = []
         if self.urls_by_path.get(path):
             dupestats.append(self.path_dupstats[path])
+        # If param is in the query
         for param, value in query.items():
             qwp_key = _q_key(_without_key(query, param))
             # Have we seen the query with param changed or removed?
@@ -75,8 +76,13 @@ class DupePredictor:
             if removed_param:
                 dupestats.extend(
                     self._param_value_dupstats(path, param, value))
-        # TODO - a case when a more specialized url comes first, and now
-        # we see a less specialized one
+        # If param is not in the query, but we've crawled a page when it is
+        q_key = _q_key(query)
+        for param in (self.params_by_path[path] - set(query)):
+            added_param = self.urls_by_path_qwp.get((path, param, q_key))
+            if added_param:
+                dupestats.extend(self._param_dupstats(path, param, q_key))
+            # TODO - support for (5, 6)
         return max(ds.get_prob() for ds in dupestats) if dupestats else 0.
 
     def update_model(self, url, text):
