@@ -64,30 +64,29 @@ class DupePredictor:
         '''
         path, query = _parse_url(url)
         dupestats = []
+        extend_ds = lambda x: dupestats.extend(filter(None, (
+            ds_dict.get(key) for ds_dict, key in x)))
         if self.urls_by_path.get(path):
-            dupestats.append(self.path_dupstats[path])
+            extend_ds([(self.path_dupstats, path)])
         # If param is in the query
         for param, value in query.items():
             qwp_key = _q_key(_without_key(query, param))
             # Have we seen the query with param changed or removed?
-            changed_param = self.urls_by_path_qwp.get((path, param, qwp_key))
-            removed_param = self.urls_by_path_q.get((path, qwp_key))
-            if changed_param or removed_param:
-                dupestats.extend(self._param_dupstats(path, param, qwp_key))
-            if removed_param:
-                dupestats.extend(
-                    self._param_value_dupstats(path, param, value))
+            has_changed = self.urls_by_path_qwp.get((path, param, qwp_key))
+            has_removed = self.urls_by_path_q.get((path, qwp_key))
+            if has_changed or has_removed:
+                extend_ds(self._param_dupstats(path, param, qwp_key))
+            if has_removed:
+                extend_ds(self._param_value_dupstats(path, param, value))
         # If param is not in the query, but we've crawled a page when it is
         q_key = _q_key(query)
-        for param in (self.params_by_path[path] - set(query)):
-            added_param = self.urls_by_path_qwp.get((path, param, q_key))
-            if added_param:
-                dupestats.extend(self._param_dupstats(path, param, q_key))
+        for param in (self.params_by_path.get(path, set()) - set(query)):
+            if self.urls_by_path_qwp.get((path, param, q_key)):
+                extend_ds(self._param_dupstats(path, param, q_key))
                 # FIXME - this could be a long list of param values,
                 # it's better to somehow store only high-probability values?
-                for value in self.param_values[path, param]:
-                    dupestats.extend(
-                        self._param_value_dupstats(path, param, value))
+                for value in self.param_values.get((path, param), set()):
+                    extend_ds(self._param_value_dupstats(path, param, value))
         return max(ds.get_prob() for ds in dupestats) if dupestats else 0.
 
     def update_model(self, url, text):
@@ -103,7 +102,7 @@ class DupePredictor:
                       if m.path == item_path]
         # Hypothesis (1) - just paths
         n_path_nodup = self._nodup_filter(min_hash, (
-            self.urls_by_path[item_path]
+            self.urls_by_path.get(item_path, set())
             .difference(url for url, _ in duplicates)))
         self.path_dupstats[item_path].update(len(duplicates), n_path_nodup)
         # Other hypotheses, if param is in the query
@@ -111,10 +110,11 @@ class DupePredictor:
             self._update_with_param(
                 duplicates, min_hash, item_path, item_query, param, [value])
         # Other hypotheses, if param is not in the query
-        for param in (self.params_by_path[item_path] - set(item_query)):
+        for param in (
+                self.params_by_path.get(item_path, set()) - set(item_query)):
             self._update_with_param(
                 duplicates, min_hash, item_path, item_query, param,
-                self.param_values[item_path, param])
+                self.param_values.get((item_path, param), set()))
         # Update indexes
         for param, value in item_query.items():
             self.urls_by_path_q[item_path, _q_key(item_query)].add(item_url)
@@ -140,16 +140,18 @@ class DupePredictor:
         q_dup = {url for url, q in duplicates
                  if _without_key(q, param) == item_qwp}
         n_q_nodup = self._nodup_filter(min_hash, (
-            self.urls_by_path_qwp[item_path, param, item_qwp_key]
-            .union(self.urls_by_path_q[item_path, item_qwp_key])
+            self.urls_by_path_qwp.get((item_path, param, item_qwp_key), set())
+            .union(self.urls_by_path_q.get((item_path, item_qwp_key), set()))
             .difference(q_dup)))
-        for ds in self._param_dupstats(item_path, param, item_qwp_key):
-            ds.update(len(q_dup), n_q_nodup)
+        if q_dup or n_q_nodup:
+            for ds_dict, key in self._param_dupstats(
+                    item_path, param, item_qwp_key):
+                ds_dict[key].update(len(q_dup), n_q_nodup)
         if values:
             if param in item_query:
                 qv_dup = {url for url, q in duplicates if q == item_qwp}
                 n_qv_nodup = self._nodup_filter(min_hash, (
-                    self.urls_by_path_q[item_path, item_qwp_key]
+                    self.urls_by_path_q.get((item_path, item_qwp_key), set())
                     .difference(qv_dup)))
             # FIXME - this could be a long list of param values,
             # it's better to somehow store only high-probability values?
@@ -160,22 +162,24 @@ class DupePredictor:
                         _without_key(q, param) == item_qwp}
                     qap_key = _q_key(_with_key_val(item_query, param, value))
                     n_qv_nodup = self._nodup_filter(min_hash, (
-                        self.urls_by_path_q[item_path, qap_key]
+                        self.urls_by_path_q.get((item_path, qap_key), set())
                         .difference(qv_dup)))
-                for ds in self._param_value_dupstats(item_path, param, value):
-                    ds.update(len(qv_dup), n_qv_nodup)
+                if qv_dup or n_qv_nodup:
+                    for ds_dict, key in self._param_value_dupstats(
+                            item_path, param, value):
+                        ds_dict[key].update(len(qv_dup), n_qv_nodup)
 
     def _param_dupstats(self, path, param, qwp_key):
         return [
-            self.param_dupstats[param],
-            self.path_param_dupstats[path, param],
-            self.path_query_param_dupstats[path, param, qwp_key],
+            (self.param_dupstats, param),
+            (self.path_param_dupstats, (path, param)),
+            (self.path_query_param_dupstats, (path, param, qwp_key)),
             ]
 
     def _param_value_dupstats(self, path, param, value):
         return [
-            self.param_value_dupstats[param, value],
-            self.path_param_value_dupstats[path, param, value],
+            (self.param_value_dupstats, (param, value)),
+            (self.path_param_value_dupstats, (path, param, value)),
             ]
 
     def _nodup_filter(self, min_hash, all_urls, max_sample=200):
