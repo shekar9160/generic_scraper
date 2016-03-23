@@ -35,22 +35,23 @@ class DupePredictor:
         self.urls_by_path = defaultdict(set)  # path: {url}
         self.urls_by_path_q = defaultdict(set)  # (path, q): {url}
         self.urls_by_path_qwp = defaultdict(set)  # (path, param, q): {url}
+        self.params_by_path = defaultdict(set)  # path: {param}
 
         # Duplicate hypotheses:
-        # All items with same path are duplicates. Key is (path,)
+        # (1) All items with same path are duplicates. Key is (path,)
         self.path_dupstats = defaultdict(DupStat)
-        # All items with same path that differ only in given param are
+        # (2) All items with same path that differ only in given param are
         # duplicates. Key is (param,)
         self.param_dupstats = defaultdict(DupStat)
-        # Same but conditioned by path, key is (path, param)
+        # (3) Same but conditioned by path, key is (path, param)
         self.path_param_dupstats = defaultdict(DupStat)
-        # Same but conditioned by path + the rest of the query
+        # (4) Same but conditioned by path + the rest of the query
         # Key is (path, query, param)
         self.path_query_param_dupstats = defaultdict(DupStat)
-        # All items with same path with only added param=value are duplicates
+        # (5) All items with same path with only added param=value are duplicates
         # Key is (param, value)
         self.param_value_dupstats = defaultdict(DupStat)
-        # Same but conditioned by path, key is (path, param, value)
+        # (6) Same but conditioned by path, key is (path, param, value)
         self.path_param_value_dupstats = defaultdict(DupStat)
         # TODO - more powerful hypotheses:
         # - param + value without path
@@ -89,44 +90,56 @@ class DupePredictor:
             (url, self.seen_urls[url]) for url in self.lsh.query(min_hash)]
         duplicates = [(url, m.query) for url, m in all_duplicates
                       if m.path == item_path]
-
+        # Hypothesis (1) - just paths
         n_path_nodup = self._nodup_filter(min_hash, (
             self.urls_by_path[item_path]
             .difference(url for url, _ in duplicates)))
         self.path_dupstats[item_path].update(len(duplicates), n_path_nodup)
-
+        # Other hypotheses, if param is in the query
         for param, value in item_query.items():
-            # qwp = "query without param"
-            item_qwp = _without_key(item_query, param)
-            item_qwp_key = _q_key(item_qwp)
+            self._update_with_param(
+                duplicates, min_hash, item_path, item_query, param, value)
+        # Other hypotheses, if param is not in the query
+        for param in (self.params_by_path[item_path] - set(item_query)):
+            # TODO - we lack value support for (5, 6) atm
+            self._update_with_param(
+                duplicates, min_hash, item_path, item_query, param)
+        # Update indexes
+        for param, value in item_query.items():
+            self.urls_by_path_q[item_path, _q_key(item_query)].add(item_url)
+            item_qwp_key = _q_key(_without_key(item_query, param))
+            self.urls_by_path_qwp[item_path, param, item_qwp_key].add(item_url)
+            self.params_by_path[item_path].add(param)
+        self.urls_by_path_q[item_path, ()].add(item_url)
+        self.urls_by_path[item_path].add(item_url)
+        self.lsh.insert(item_url, min_hash)
+        self.seen_urls[item_url] = URLMeta(item_path, item_query, min_hash)
+        if len(self.seen_urls) % 100 == 0:
+            self.log_dupstats()
+        return all_duplicates
 
-            q_dup = {url for url, q in duplicates
-                     if _without_key(q, param) == item_qwp}
-            n_q_nodup = self._nodup_filter(min_hash, (
-                self.urls_by_path_qwp[item_path, param, item_qwp_key]
-                .union(self.urls_by_path_q[item_path, item_qwp_key])
-                .difference(q_dup)))
-            for ds in self._param_dupstats(item_path, param, item_qwp_key):
-                ds.update(len(q_dup), n_q_nodup)
+    def _update_with_param(self, duplicates, min_hash, item_path, item_query,
+                           param, value=None):
+        # qwp = "query without param"
+        item_qwp = _without_key(item_query, param)
+        item_qwp_key = _q_key(item_qwp)
 
+        q_dup = {url for url, q in duplicates
+                 if _without_key(q, param) == item_qwp}
+        n_q_nodup = self._nodup_filter(min_hash, (
+            self.urls_by_path_qwp[item_path, param, item_qwp_key]
+            .union(self.urls_by_path_q[item_path, item_qwp_key])
+            .difference(q_dup)))
+        for ds in self._param_dupstats(item_path, param, item_qwp_key):
+            ds.update(len(q_dup), n_q_nodup)
+
+        if value is not None:
             qv_dup = {url for url, q in duplicates if q == item_qwp}
             n_qv_nodup = self._nodup_filter(min_hash, (
                 self.urls_by_path_q[item_path, item_qwp_key]
                 .difference(qv_dup)))
             for ds in self._param_value_dupstats(item_path, param, value):
                 ds.update(len(qv_dup), n_qv_nodup)
-
-            self.urls_by_path_q[item_path, _q_key(item_query)].add(item_url)
-            self.urls_by_path_qwp[item_path, param, item_qwp_key].add(item_url)
-        self.urls_by_path_q[item_path, ()].add(item_url)
-
-        if len(self.seen_urls) % 100 == 0:
-            self.log_dupstats()
-
-        self.lsh.insert(item_url, min_hash)
-        self.seen_urls[item_url] = URLMeta(item_path, item_query, min_hash)
-        self.urls_by_path[item_path].add(item_url)
-        return all_duplicates
 
     def _param_dupstats(self, path, param, qwp_key):
         return [
