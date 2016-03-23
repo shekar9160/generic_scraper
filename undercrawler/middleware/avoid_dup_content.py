@@ -1,4 +1,4 @@
-import logging
+import logging, time
 
 from scrapy.exceptions import IgnoreRequest, NotConfigured
 
@@ -35,17 +35,26 @@ class AvoidDupContentMiddleware:
 
     def process_request(self, request, spider):
         if self.dupe_predictor:
-            dupe_prob = self.dupe_predictor.get_dupe_prob(request.url)
+            url = request.url
+            t0 = time.time()
+            dupe_prob = self.dupe_predictor.get_dupe_prob(url)
+            t = time.time() - t0
+            if t > 0.01:
+                logger.debug('get_dupe_prob took %.4f s for %s', t, url)
             # TODO - lower priority for some requests
             if dupe_prob > 0.98:
                 logger.debug('Ignoring a likely duplicate %s with prob %3.f',
-                            request.url, dupe_prob)
+                             url, dupe_prob)
                 raise IgnoreRequest
 
     def process_response(self, request, response, spider):
         url, text = response.url, extract_text(response)
+        t0 = time.time()
         if self.dupe_predictor:
             self.dupe_predictor.update_model(url, text)
+            t = time.time() - t0
+            if t > 0.01:
+                logger.debug('Updated model in %.4f s for %s', t, url)
         else:
             self.initial_queue.append((url, text))
             if len(self.initial_queue) >= self.initial_queue_limit:
@@ -57,4 +66,5 @@ class AvoidDupContentMiddleware:
                 for url, text in self.initial_queue:
                     self.dupe_predictor.update_model(url, text)
                 self.initial_queue = None
+                logger.debug('Built DupePredictor in %.4f s', time.time() - t0)
         return response
