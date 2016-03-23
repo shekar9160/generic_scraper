@@ -8,6 +8,22 @@ from undercrawler.dupe_predict import DupePredictor
 logging.basicConfig(level=logging.DEBUG)
 
 
+def test_path():
+    dupe_predictor = DupePredictor()
+    def gen_urls():
+        return ['http://foo.com/d?p{0}={0}'.format(random.randint(1, 100)),
+                'http://foo.com/nd?p{0}={0}'.format(random.randint(1, 100))]
+    for _ in range(100):
+        url1, url2 = gen_urls()
+        dupe_predictor.update_model(url1, 'd')
+        dupe_predictor.update_model(
+            url2, 'd{}'.format(random.randint(1, 100)))
+    dupe_predictor.log_dupstats(min_dup=1)
+    url1, url2 = gen_urls()
+    assert dupe_predictor.get_dupe_prob(url1) > 0.97
+    assert dupe_predictor.get_dupe_prob(url2) < 0.97
+
+
 @pytest.mark.parametrize('reverse_update', [True, False])
 @pytest.mark.parametrize('reverse_test', [True, False])
 @pytest.mark.parametrize('is_param', [True, False])
