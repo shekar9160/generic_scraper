@@ -26,6 +26,7 @@ class AvoidDupContentMiddleware:
         # is common to a lot of pages, and which is unique.
         self.initial_queue = []  # (url, text)
         self.initial_queue_limit = 300
+        self.n_responses = 0
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -43,11 +44,12 @@ class AvoidDupContentMiddleware:
                 logger.debug('get_dupe_prob took %.4f s for %s', t, url)
             # TODO - lower priority for some requests
             if dupe_prob > 0.98:
-                logger.debug('Ignoring a likely duplicate %s with prob %3.f',
+                logger.debug('Ignoring a likely duplicate %s with prob %.3f',
                              url, dupe_prob)
                 raise IgnoreRequest
 
     def process_response(self, request, response, spider):
+        self.n_responses += 1
         url, text = response.url, extract_text(response)
         t0 = time.time()
         if self.dupe_predictor:
@@ -55,6 +57,8 @@ class AvoidDupContentMiddleware:
             t = time.time() - t0
             if t > 0.01:
                 logger.debug('Updated model in %.4f s for %s', t, url)
+            if self.n_responses % 500 == 0:
+                self.dupe_predictor.log_dupstats()
         else:
             self.initial_queue.append((url, text))
             if len(self.initial_queue) >= self.initial_queue_limit:
