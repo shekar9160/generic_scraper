@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-import argparse, logging, os, random
-from collections import namedtuple, defaultdict
-from urllib.parse import urlsplit, parse_qs
+import argparse, logging, os
+from collections import namedtuple
+from urllib.parse import urlsplit
 
 from datasketch import LSH
 from scrapy.utils.url import canonicalize_url
@@ -25,8 +25,9 @@ def main():
         print('site'.ljust(40), '\t'.join(['urls', 'set(u)', 'pth', 'uniq']))
     if os.path.isdir(args.crawler_out):
         for filename in os.listdir(args.crawler_out):
-            with open(os.path.join(args.crawler_out, filename)) as f:
-                fn(filename, f, verbose=args.verbose)
+            if any(filename.endswith(ext) for ext in ['.json', '.jl']):
+                with open(os.path.join(args.crawler_out, filename)) as f:
+                    fn(filename, f, verbose=args.verbose)
     else:
         with open(args.crawler_out) as f:
             fn(os.path.basename(args.crawler_out), f, verbose=args.verbose)
@@ -80,11 +81,14 @@ def n_unique(documents, duplicates):
 
 
 def learn_duplicates(name, f, verbose=False):
+    print(name)
     logging.basicConfig(level=logging.DEBUG)
     texts_sample = [
         item['extracted_text'] for item in item_reader(f, name, limit=300)]
     dupe_predictor = DupePredictor(texts_sample)
 
+    lsh = LSH(threshold=0.9, num_perm=128)  # separate from dupe_predictor
+    too_common_shingles = dupe_predictor.too_common_shingles
     threshold = 0.98
     y_pred, y_true = [], []
     def _report_pr():
@@ -99,16 +103,23 @@ def learn_duplicates(name, f, verbose=False):
     for i, item in enumerate(item_reader(f, name)):
         dupe_prob = dupe_predictor.get_dupe_prob(item['url'])
         y_pred.append(dupe_prob)
-        duplicates = \
-            dupe_predictor.update_model(item['url'], item['extracted_text'])
+        min_hash = get_min_hash(item['extracted_text'], too_common_shingles)
+        if dupe_prob < threshold:
+            duplicates = [url for url, _ in dupe_predictor.update_model(
+                item['url'], item['extracted_text'])]
+        else:
+            # We think this is a duplicate: replicate crawling
+            # and do not update the model.
+            duplicates = list(lsh.query(min_hash))
+        lsh.insert(canonicalize_url(item['url']), min_hash)
         y_true.append(bool(duplicates))
         if verbose:
             if duplicates and dupe_prob < threshold:
                 path, _ = _parse_url(item['url'])
-                sample = [(url, meta) for url, meta in duplicates
-                          if meta.path == path] or duplicates
+                sample = [url for url in duplicates
+                          if _parse_url(url)[0] == path] or duplicates
                 print('false negative %s (%s, %d more)' % (
-                    item['url'], sample[0][0], len(sample) - 1))
+                    item['url'], sample[0], len(sample) - 1))
             elif not duplicates and dupe_prob > threshold:
                 print('false positive', item['url'])
         if i % 100 == 0:
