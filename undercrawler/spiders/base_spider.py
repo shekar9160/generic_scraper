@@ -11,6 +11,7 @@ from scrapy.linkextractors import LinkExtractor
 from scrapy.utils.url import canonicalize_url
 from scrapy.utils.python import unique
 
+from ..utils import cached_property
 from ..items import CDRItem
 from ..crazy_form_submitter import search_form_requests
 
@@ -26,7 +27,7 @@ class BaseSpider(scrapy.Spider):
             urls = [url]
         self.start_urls = [self._normalize_url(_url) for _url in urls]
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
-        self._link_extractor = self._iframe_link_extractor = None
+        self._reset_link_extractors()
         self.state = {}
         super().__init__(*args, **kwargs)
 
@@ -34,9 +35,11 @@ class BaseSpider(scrapy.Spider):
         for url in self.start_urls:
             yield self.splash_request(url, callback=self.parse_first)
 
-    def splash_request(self, url, callback=None, **kwargs):
+    def splash_request(self, url, callback=None, meta=None, **kwargs):
         callback = callback or self.parse
-        return scrapy.Request(url, callback=callback, **kwargs)
+        meta = meta or {}
+        meta['use_hh_splash'] = True
+        return scrapy.Request(url, callback=callback, meta=meta, **kwargs)
 
     def parse_first(self, response):
         self.allowed += (self._allowed_re(response.url),)
@@ -58,7 +61,7 @@ class BaseSpider(scrapy.Spider):
 
         forms = formasaurus.extract_forms(response.text) if response.text \
                 else []
-        yield self.cdr_item(response, dict(
+        parent_item = self.text_cdr_item(response, dict(
             is_page=response.meta.get('is_page', False),
             is_onclick=response.meta.get('is_onclick', False),
             is_iframe=response.meta.get('is_iframe', False),
@@ -68,6 +71,7 @@ class BaseSpider(scrapy.Spider):
             depth=response.meta.get('depth', None),
             forms=[meta for _, meta in forms],
             ))
+        yield parent_item
 
         if self.settings.getbool('PREFER_PAGINATION'):
             # Follow pagination links; pagination is not a subject of
@@ -81,8 +85,26 @@ class BaseSpider(scrapy.Spider):
         # Follow all in-domain links.
         # Pagination requests are sent twice, but we don't care because
         # they're be filtered out by a dupefilter.
-        for link in self.link_extractor.extract_links(response):
-            yield request(link.url)
+        normal_urls = {link.url for link in
+                       self.link_extractor.extract_links(response)}
+        for url in normal_urls:
+            yield request(url)
+
+        # Download files (will be handled via CDRDocumentsPipeline).
+        file_urls = {link.url for link in
+                     self.files_link_extractor.extract_links(response)}\
+                    .difference(normal_urls)
+        for url in file_urls:
+            yield self.cdr_item(
+                url,
+                metadata=dict(
+                    extracted_at=response.url,
+                    depth=response.meta.get('depth', None),
+                    from_search=response.meta.get('from_search', False),
+                    ),
+                obj_original_url=url,
+                obj_parent=parent_item.get('_id'),
+                )
 
         # urls extracted from onclick handlers
         for url in get_js_links(response):
@@ -115,24 +137,28 @@ class BaseSpider(scrapy.Spider):
                 request_kwargs=dict(meta={'is_search': True}),
             )
 
-    def cdr_item(self, response, metadata):
-        url = response.url
+    def text_cdr_item(self, response, metadata):
+        return self.cdr_item(
+            response.url, metadata,
+            content_type=response.headers['content-type']\
+                .decode('ascii', 'ignore'),
+            extracted_text='\n'.join(
+                response.xpath('//body').xpath('string()').extract()),
+            raw_content=response.text,
+            )
+
+    def cdr_item(self, url, metadata, **extra):
         timestamp = int(datetime.utcnow().timestamp() * 1000)
         return CDRItem(
             _id=hashlib.sha256('{}-{}'.format(url, timestamp).encode('utf-8'))\
                 .hexdigest().upper(),
-            content_type=response.headers['content-type']\
-                .decode('ascii', 'ignore'),
             crawler=self.settings.get('CDR_CRAWLER'),
             extracted_metadata=metadata,
-            extracted_text='\n'.join(
-                response.xpath('//body').xpath('string()').extract()),
-            raw_content=response.text,
             team=self.settings.get('CDR_TEAM'),
             timestamp=timestamp,
             url=url,
             version=2.0,
-        )
+            **extra)
 
     def _normalize_url(self, url):
         if not url.startswith('http'):
@@ -152,16 +178,14 @@ class BaseSpider(scrapy.Spider):
             if self.link_extractor.matches(url)
         ]
 
-    @property
+    @cached_property('_extra_search_terms')
     def extra_search_terms(self):
-        if self._extra_search_terms is None:
-            st_file = self.settings.get('SEARCH_TERMS_FILE')
-            if st_file:
-                with open(st_file) as f:
-                    self._extra_search_terms = [line.strip() for line in f]
-            else:
-                self._extra_search_terms = []
-        return self._extra_search_terms
+        st_file = self.settings.get('SEARCH_TERMS_FILE')
+        if st_file:
+            with open(st_file) as f:
+                return [line.strip() for line in f]
+        else:
+            return []
 
     @property
     def allowed(self):
@@ -171,20 +195,30 @@ class BaseSpider(scrapy.Spider):
     def allowed(self, allowed):
         self.state['allowed'] = allowed
         # Reset link extractors to pick up with the latest self.allowed regexps
-        self._link_extractor = self._iframe_link_extractor = None
+        self._reset_link_extractors()
 
-    @property
+    def _reset_link_extractors(self):
+        self._link_extractor = None
+        self._files_link_extractor = None
+        self._iframe_link_extractor = None
+
+    @cached_property('_link_extractor')
     def link_extractor(self):
-        if self._link_extractor is None:
-            self._link_extractor = LinkExtractor(allow=self.allowed)
-        return self._link_extractor
+        return LinkExtractor(allow=self.allowed)
 
-    @property
+    @cached_property('_iframe_link_extractor')
     def iframe_link_extractor(self):
-        if self._iframe_link_extractor is None:
-            self._iframe_link_extractor = LinkExtractor(
-                allow=self.allowed, tags=['iframe'], attrs=['src'])
-        return self._iframe_link_extractor
+        return LinkExtractor(
+            allow=self.allowed, tags=['iframe'], attrs=['src'])
+
+    @cached_property('_files_link_extractor')
+    def files_link_extractor(self):
+        return LinkExtractor(
+            allow=self.allowed,
+            tags=['a', 'area', 'img'],
+            attrs=['src', 'href'],
+            deny_extensions=[],  # allow all extensions
+        )
 
     @property
     def handled_search_forms(self):
