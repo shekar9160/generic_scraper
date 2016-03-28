@@ -11,7 +11,9 @@ from scrapy.utils.request import request_fingerprint
 
 class HHSplashMiddleware(SplashMiddleware):
     ''' Middleware that extends SplashMiddleware from scrapyjs:
-    * Make all requests using headless_horseman.lua, including POST requests.
+    Make all requests using headless_horseman.lua, including POST requests.
+    To apply middleware for the request, add "use_hh_splash" = True
+    to request.meta.
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,7 +25,8 @@ class HHSplashMiddleware(SplashMiddleware):
             self.js_source = f.read()
 
     def process_request(self, request, spider):
-        if request.meta.get('_splash_processed'):
+        if not (request.meta.get('use_hh_splash') or
+                request.meta.get('_splash_processed')):
             return
         adblock = self.crawler.settings.getbool('ADBLOCK')
         request.meta['splash'] = {
@@ -46,6 +49,8 @@ class HHSplashMiddleware(SplashMiddleware):
         return super().process_request(request, spider)
 
     def process_response(self, request, response, spider):
+        if not request.meta.get('_splash_processed'):
+            return response
         response = super().process_response(request, response, spider)
         if response.status in [500, 502, 503, 504]:
             return response

@@ -18,6 +18,17 @@ class CDRItem(scrapy.Item):
     # Tika/other extraction output (string)
     extracted_text = scrapy.Field()
 
+    # If present, this will contain the _id field of a parent record (string)
+    obj_parent = scrapy.Field()
+
+    # URL reference to a binary object's original location (string)
+    obj_original_url = scrapy.Field()
+
+    # URL reference to a cached copy of a binary object,
+    # suggested format to minimize duplication:
+    # filename is the UPPERCASE hash SHA-256 of the object
+    obj_stored_url = scrapy.Field()
+
     # Original source text/html (string)
     raw_content = scrapy.Field()
 
