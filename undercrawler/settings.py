@@ -20,12 +20,14 @@ PREFER_PAGINATION = True
 ADBLOCK = False
 MAX_DOMAIN_SEARCH_FORMS = 10
 HARD_URL_CONSTRAINT = False
+AVOID_DUP_CONTENT_ENABLED = True
 
 FILES_STORE_S3_ACL = 'public-read'
 # Set FILES_STORE to enable
 ITEM_PIPELINES = {'undercrawler.documents_pipeline.CDRDocumentsPipeline': 1}
 
 DOWNLOADER_MIDDLEWARES = {
+    'undercrawler.middleware.AvoidDupContentMiddleware': 200,
     'undercrawler.middleware.AutologinMiddleware': 584,
 }
 if USE_SPLASH:

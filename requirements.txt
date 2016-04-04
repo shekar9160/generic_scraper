@@ -4,3 +4,4 @@ Formasaurus[with-deps]==0.7.1
 autopager==0.1
 datasketch==0.1.35
 tqdm
+pytest
