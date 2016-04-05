@@ -25,6 +25,7 @@ function main(splash)
   local method = get_arg(splash.args.http_method, "GET")
   local body = get_arg(splash.args.body, nil)
   local headers = get_arg(splash.args.headers, nil)
+  local cookies = get_arg(splash.args.cookies, nil)
   local visual = get_arg(splash.args.visual, false)
 
   -- 992px is Bootstrap's minimum "desktop" size. 744 gives the viewport
@@ -33,6 +34,9 @@ function main(splash)
   local viewport_width = splash.args.viewport_width or 992
   local viewport_height = splash.args.viewport_height or 744
 
+  if cookies then
+    splash:init_cookies(cookies)
+  end
   splash:autoload(splash.args.js_source)
 
   if debug then
@@ -91,6 +95,7 @@ function main(splash)
   render['url'] = splash:url()
   render['headers'] = last_response.headers
   render['http_status'] = last_response.status
+  render['cookies'] = splash:get_cookies()
 
   return render
 end

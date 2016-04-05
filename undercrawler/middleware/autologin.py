@@ -1,4 +1,4 @@
-from http.cookies import SimpleCookie, CookieError
+from http.cookies import SimpleCookie
 from urllib.parse import urljoin
 import json
 import logging
@@ -39,7 +39,8 @@ class AutologinMiddleware:
         if auth_cookies:
             cookies = SimpleCookie()
             cookies.load(auth_cookies)
-            self.auth_cookies = {m.key: m.value for m in cookies.values()}
+            self.auth_cookies = [
+                {'name': m.key, 'value': m.value} for m in cookies.values()]
             self.logged_in = True
         else:
             self.auth_cookies = None
@@ -70,21 +71,20 @@ class AutologinMiddleware:
         request.meta['_autologin'] = autologin_meta = {'request': req_copy}
 
         if not self.logged_in:
-            self.auth_cookies = self.get_cookies(request.url)
+            self.auth_cookies = self.get_auth_cookies(request.url)
             self.logged_in = True
         elif any(url in request.url for url in self.logout_urls):
             logger.debug('Ignoring logout request %s', request.url)
             raise IgnoreRequest
 
-        # Do our own "cookie" management, so that changes in self.auth_cookies
+        # Always apply self.cookies, so that changes in self.auth_cookies
         # are applied to all future requests immediately.
         if self.auth_cookies:
-            request.headers.pop('cookie', None)
-            request.headers['cookie'] = '; '.join(
-                '{}={}'.format(k, v) for k, v in self.auth_cookies.items())
-            autologin_meta['cookies'] = dict(self.auth_cookies)
+            request.cookies = self.auth_cookies
+            autologin_meta['cookie_dict'] = {
+                c['name']: c['value'] for c in self.auth_cookies}
 
-    def get_cookies(self, url):
+    def get_auth_cookies(self, url):
         logger.debug('Attempting login at %s', url)
         while True:
             request = requests.post(
@@ -105,9 +105,8 @@ class AutologinMiddleware:
             elif status == 'solved':
                 cookies = response.get('cookies')
                 if cookies:
-                    cookie_dict = {c['name']: c['value'] for c in cookies}
-                    logger.debug('Got cookies after login %s', cookie_dict)
-                    return cookie_dict
+                    logger.debug('Got cookies after login %s', cookies)
+                    return cookies
                 else:
                     logger.debug('No cookies after login')
                     return None
@@ -115,38 +114,28 @@ class AutologinMiddleware:
     def process_response(self, request, response, spider):
         ''' If we were logged out, login again and retry request.
         '''
+        logger.debug('response %s cookies %s', response, response.cookiejar)
         if self.is_logout(response):
             logger.debug('Logout at %s %s',
-                         response.url, response.headers.getlist('set-cookie'))
+                         response.url, response.cookiejar)
             autologin_meta = request.meta['_autologin']
             # We could have already done relogin after initial logout
-            if any(autologin_meta['cookies'].get(k) != v
-                    for k, v in self.auth_cookies.items()):
+            if any(autologin_meta['cookie_dict'].get(c['name']) != c['value']
+                    for c in self.auth_cookies):
                 retryreq = autologin_meta['request'].copy()
                 retryreq.dont_filter = True
                 logger.debug('Stale request %s was logged out, will retry %s',
                              response, retryreq)
                 return retryreq
             logger.debug('Logged out at %s, will retry login', response.url)
-            self.auth_cookies = self.get_cookies(response.url)
+            self.auth_cookies = self.get_auth_cookies(response.url)
             # TODO - could have been an expired session, do not judge too early
             self.logout_urls.add(response.url)
             raise IgnoreRequest
         return response
 
     def is_logout(self, response):
-        return (
-            self.auth_cookies and
-            any(self.auth_cookies.get(name) and m.value == ''
-                for name, m in get_cookies_from_header(
-                    response, 'set-cookie').items()))
-
-
-def get_cookies_from_header(response, header_name):
-    cookies = SimpleCookie()
-    for set_cookie in response.headers.getlist(header_name):
-        try:
-            cookies.load(set_cookie.decode('utf-8'))
-        except CookieError:
-            pass
-    return cookies
+        auth_cookies_names = {c['name'] for c in self.auth_cookies
+                              if c['value']}
+        return any(m.name in auth_cookies_names and m.value == ''
+                   for m in response.cookiejar)
