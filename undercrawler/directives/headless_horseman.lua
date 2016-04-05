@@ -22,7 +22,7 @@ function main(splash)
   local return_html = get_arg(splash.args.return_html, true)
   local return_png = get_arg(splash.args.return_png, true)
   local url = splash.args.url
-  local method = get_arg(splash.args.method, "GET")
+  local method = get_arg(splash.args.http_method, "GET")
   local body = get_arg(splash.args.body, nil)
   local headers = get_arg(splash.args.headers, nil)
   local visual = get_arg(splash.args.visual, false)
@@ -33,6 +33,7 @@ function main(splash)
   local viewport_width = splash.args.viewport_width or 992
   local viewport_height = splash.args.viewport_height or 744
 
+  -- splash:init_cookies(splash.args.cookies)
   splash:autoload(splash.args.js_source)
 
   if debug then
@@ -45,7 +46,7 @@ function main(splash)
 
   splash:autoload("__headless_horseman__.patchAll();")
   splash:set_viewport_size(viewport_width, viewport_height)
-  assert(splash:go{url, http_method=method, headers=headers, body=body})
+  assert(splash:go{url, http_method=http_method, headers=headers, body=body})
   splash:lock_navigation()
 
   -- Run a battery of Headless Horseman tests.
@@ -73,6 +74,8 @@ function main(splash)
   -- Render and return the requested outputs.
 
   local render = {}
+  local entries = splash:history()
+  local last_response = entries[#entries].response
 
   if return_har then
     render['har'] = splash:har{reset=true}
@@ -87,6 +90,9 @@ function main(splash)
   end
 
   render['url'] = splash:url()
+  render['headers'] = last_response.headers
+  render['http_status'] = last_response.status
+  -- render['cookies'] = splash:get_cookies()
 
   return render
 end

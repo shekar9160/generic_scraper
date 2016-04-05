@@ -1,4 +1,5 @@
 import re
+import os.path
 import contextlib
 from datetime import datetime
 import hashlib
@@ -10,6 +11,7 @@ import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.utils.url import canonicalize_url
 from scrapy.utils.python import unique
+from scrapyjs import SplashRequest
 
 from ..utils import cached_property
 from ..items import CDRItem
@@ -30,6 +32,12 @@ class BaseSpider(scrapy.Spider):
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
         self._reset_link_extractors()
         self.state = {}
+        # Load headless_horseman scripts
+        root = os.path.join(os.path.dirname(__file__), '../directives')
+        with open(os.path.join(root, 'headless_horseman.lua')) as f:
+            self.lua_source = f.read()
+        with open(os.path.join(root, 'headless_horseman.js')) as f:
+            self.js_source = f.read()
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
@@ -38,9 +46,20 @@ class BaseSpider(scrapy.Spider):
 
     def splash_request(self, url, callback=None, meta=None, **kwargs):
         callback = callback or self.parse
-        meta = meta or {}
-        meta['use_hh_splash'] = True
-        return scrapy.Request(url, callback=callback, meta=meta, **kwargs)
+        args = {
+            'lua_source': self.lua_source,
+            'js_source': self.js_source,
+            'run_hh': self.settings.getbool('RUN_HH'),
+            'return_png': False,
+            'images_enabled': False,
+            }
+        if self.settings.getbool('ADBLOCK'):
+            args['filters'] = 'fanboy-annoyance,easylist'
+        if self.settings.getbool('FORCE_TOR'):
+            args['proxy'] = 'tor'
+        return SplashRequest(
+            url, callback=callback, meta=meta, args=args, endpoint='execute',
+            **kwargs)
 
     def parse_first(self, response):
         self.allowed += (self._allowed_re(response.url),)
