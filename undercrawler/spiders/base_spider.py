@@ -91,21 +91,8 @@ class BaseSpider(scrapy.Spider):
         for url in normal_urls:
             yield request(url)
 
-        # Download files (will be handled via CDRDocumentsPipeline).
-        file_urls = {link.url for link in
-                     self.files_link_extractor.extract_links(response)}\
-                    .difference(normal_urls)
-        for url in file_urls:
-            yield self.cdr_item(
-                url,
-                metadata=dict(
-                    extracted_at=response.url,
-                    depth=response.meta.get('depth', None),
-                    from_search=response.meta.get('from_search', False),
-                    ),
-                obj_original_url=url,
-                obj_parent=parent_item.get('_id'),
-                )
+        if self.settings.get('FILES_STORE'):
+            yield from self.download_files(response, normal_urls, parent_item)
 
         # urls extracted from onclick handlers
         for url in get_js_links(response):
@@ -137,6 +124,24 @@ class BaseSpider(scrapy.Spider):
                 extra_search_terms=self.extra_search_terms,
                 request_kwargs=dict(meta={'is_search': True}),
             )
+
+    def download_files(self, response, normal_urls, parent_item):
+        ''' Download linked files (will be handled via CDRDocumentsPipeline).
+        '''
+        file_urls = {link.url for link in
+                     self.files_link_extractor.extract_links(response)}\
+                    .difference(normal_urls)
+        for url in file_urls:
+            yield self.cdr_item(
+                url,
+                metadata=dict(
+                    extracted_at=response.url,
+                    depth=response.meta.get('depth', None),
+                    from_search=response.meta.get('from_search', False),
+                    ),
+                obj_original_url=url,
+                obj_parent=parent_item.get('_id'),
+                )
 
     def text_cdr_item(self, response, metadata):
         return self.cdr_item(
