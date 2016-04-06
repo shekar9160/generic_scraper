@@ -1,5 +1,5 @@
 language: python
-python: 3.4
+python: 3.5
 sudo: required
 
 branches:
@@ -12,6 +12,15 @@ services:
 
 before_install:
     - docker run -d -p 8050:8050 scrapinghub/splash
+
+addons:
+    apt:
+        packages:
+            - python-numpy
+            - python-scipy
+            - libatlas-base-dev
+            - liblapack-dev
+            - gfortran
 
 install:
     - pip install -U tox codecov
