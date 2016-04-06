@@ -31,8 +31,12 @@ DOWNLOADER_MIDDLEWARES = {
     'undercrawler.middleware.AutologinMiddleware': 584,
 }
 if USE_SPLASH:
-    DOWNLOADER_MIDDLEWARES['undercrawler.middleware.HHSplashMiddleware'] = 585
-    DUPEFILTER_CLASS = 'undercrawler.middleware.HHSplashAwareDupefilter'
+    DOWNLOADER_MIDDLEWARES.update({
+        'scrapyjs.SplashMiddleware': 725,
+        'scrapy.downloadermiddlewares.httpcompression'
+            '.HttpCompressionMiddleware': 810,
+    })
+    DUPEFILTER_CLASS = 'undercrawler.splash.HHSplashAwareDupefilter'
 
 COOKIES_ENABLED = False
 
