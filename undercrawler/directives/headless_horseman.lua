@@ -33,7 +33,6 @@ function main(splash)
   local viewport_width = splash.args.viewport_width or 992
   local viewport_height = splash.args.viewport_height or 744
 
-  -- splash:init_cookies(splash.args.cookies)
   splash:autoload(splash.args.js_source)
 
   if debug then
@@ -92,7 +91,6 @@ function main(splash)
   render['url'] = splash:url()
   render['headers'] = last_response.headers
   render['http_status'] = last_response.status
-  -- render['cookies'] = splash:get_cookies()
 
   return render
 end
