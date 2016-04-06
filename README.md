@@ -122,3 +122,23 @@ Scripts
   show crawling stats, including ``extracted_metadata``
 * ``./scripts/gen_supervisor_configs.py``:
   generate supervisord configs for crawlers from a list of urls
+
+Tests
+-----
+
+Install test requirements:
+
+    pip install -r undercrawler/tests/requirements.txt
+
+Run all tests with:
+
+    py.test undercrawler/ --doctest-modules
+
+This assumes that splash is running on the default url http://127.0.0.1:8050,
+you can pass it to tests like this (required on OS X with splash in docker):
+
+    SPLASH_URL=http://192.168.99.100:8050 \
+        py.test undercrawler/ --doctest-modules
+
+Note that you can not use an external splash instance, because tests start
+local test servers.

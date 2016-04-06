@@ -1,7 +1,7 @@
 *.pyc
 venv
 undercrawler/keychain_db.sqlite
-*.txt
+./*.txt
 *.json
 *.jl
 .cache
