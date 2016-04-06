@@ -66,7 +66,7 @@ class AutologinMiddleware:
         # Save original request to be able to retry it in case of logout
         req_copy = request.copy()
         req_copy.callback = req_copy.errback = None
-        request.meta['_autologin'] = {'request': req_copy}
+        request.meta['_autologin'] = autologin_meta = {'request': req_copy}
 
         if not self.logged_in:
             self.auth_cookies = self.get_cookies(request.url)
@@ -81,7 +81,7 @@ class AutologinMiddleware:
             request.headers.pop('cookie', None)
             request.headers['cookie'] = '; '.join(
                 '{}={}'.format(k, v) for k, v in self.auth_cookies.items())
-            request.meta['_autologin']['cookies'] = dict(self.auth_cookies)
+            autologin_meta['cookies'] = dict(self.auth_cookies)
 
     def get_cookies(self, url):
         logger.debug('Attempting login at %s', url)
