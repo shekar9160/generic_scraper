@@ -1,7 +1,11 @@
 *.pyc
-venv
-undercrawler/keychain_db.sqlite
-./*.txt
+*.egg-info
+.tox
+.coverage
+.DS_Store
+.cache
 *.json
 *.jl
-.cache
+venv
+_sup
+undercrawler/keychain_db.sqlite

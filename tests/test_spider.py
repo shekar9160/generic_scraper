@@ -10,7 +10,7 @@ from scrapy.utils.python import to_bytes
 
 import undercrawler.settings
 from undercrawler.spiders import BaseSpider
-from undercrawler.tests.mockserver import MockServer
+from tests.mockserver import MockServer
 
 
 configure_logging({'LOG_FORMAT': '%(levelname)s: %(message)s'})
@@ -22,8 +22,7 @@ class SpiderTestCase(TestCase):
     def setUp(self):
         settings = Settings()
         settings.setmodule(undercrawler.settings)
-        settings['ITEM_PIPELINES']\
-            ['undercrawler.tests.utils.CollectorPipeline'] = 100
+        settings['ITEM_PIPELINES']['tests.utils.CollectorPipeline'] = 100
         splash_url = os.environ.get('SPLASH_URL')
         if splash_url:
             settings['SPLASH_URL'] = splash_url

@@ -9,16 +9,15 @@ from twisted.web.server import Site
 
 class MockServer():
     def __init__(self, resource):
-        self.resource_name = '{}.{}'.format(
-            resource.__module__, resource.__name__)
+        self.resource = '{}.{}'.format(resource.__module__, resource.__name__)
         self.proc = None
         self.root_url = 'http://%s:%d' % (
             socket.gethostbyname(socket.gethostname()), PORT)
 
     def __enter__(self):
         self.proc = Popen(
-            [sys.executable, '-u', '-m', 'undercrawler.tests.mockserver',
-             self.resource_name], stdout=PIPE)
+            [sys.executable, '-u', '-m', 'tests.mockserver', self.resource],
+            stdout=PIPE)
         self.proc.stdout.readline()
         return self
 
