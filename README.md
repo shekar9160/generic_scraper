@@ -1,7 +1,8 @@
 Undercrawler
 ============
 
-https://travis-ci.org/TeamHG-Memex/undercrawler.svg?branch=master
+[![Build Status](https://travis-ci.org/TeamHG-Memex/undercrawler.svg?branch=master)](https://travis-ci.org/TeamHG-Memex/undercrawler)
+[![codecov.io](https://codecov.io/github/TeamHG-Memex/undercrawler/coverage.svg?branch=master)](https://codecov.io/github/TeamHG-Memex/undercrawler?branch=master)
 
 This is a generic scrapy crawler. It is designed to handle a number
 of challenges that are hard for traditional generic crawlers, such as
