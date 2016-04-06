@@ -3,6 +3,7 @@ from urllib.parse import urljoin
 import json
 import logging
 import time
+from copy import deepcopy
 
 import requests
 from scrapy.exceptions import IgnoreRequest, NotConfigured
@@ -64,7 +65,7 @@ class AutologinMiddleware:
         if '_autologin' in request.meta:
             return
         # Save original request to be able to retry it in case of logout
-        req_copy = request.copy()
+        req_copy = request.replace(meta=deepcopy(request.meta))
         req_copy.callback = req_copy.errback = None
         request.meta['_autologin'] = autologin_meta = {'request': req_copy}
 
