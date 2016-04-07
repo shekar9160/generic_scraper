@@ -4,7 +4,7 @@ sudo: required
 
 branches:
     only:
-        - test-spider
+        - master
         - /^\d\.\d+$/
 
 services:
