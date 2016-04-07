@@ -22,9 +22,14 @@ class AutologinMiddleware:
     AUTOLOGIN_ENABLED = True
     AUTOLOGIN_URL: url of where the autologin service is running
     COOKIES_ENABLED = False (this could be relaxed perhaps)
-    AUTH_COOKIES: optionally, pass auth cookies after manual login
-    (format is "name=value; name2=value2")
-    LOGOUT_URL: optionally, pass url substring to avoid
+
+    Optional settings:
+    AUTH_COOKIES: pass auth cookies after manual login (format is_logout
+    "name=value; name2=value2")
+    LOGOUT_URL: pass url substring to avoid
+    USERNAME, PASSWORD, LOGIN_URL are passed to autologin and
+    override values from stored credentials.  LOGIN_URL is a relative url.
+    It can be omitted if it is the same as the start url.
 
     We assume a single domain in the whole process here.
     To relax this assumption, following fixes are required:
@@ -33,9 +38,12 @@ class AutologinMiddleware:
     scheduled requests in a separate queue and make request with scrapy).
     '''
     def __init__(self, autologin_url, auth_cookies=None, logout_url=None,
-                 splash_url=None):
+                 splash_url=None, login_url=None, username=None, password=None):
         self.autologin_url = autologin_url
         self.splash_url = splash_url
+        self.login_url = login_url
+        self.username = username
+        self.password = password
         if auth_cookies:
             cookies = SimpleCookie()
             cookies.load(auth_cookies)
@@ -53,12 +61,9 @@ class AutologinMiddleware:
     def from_crawler(cls, crawler):
         if not crawler.settings.getbool('AUTOLOGIN_ENABLED'):
             raise NotConfigured
-        return cls(
-            autologin_url=crawler.settings.get('AUTOLOGIN_URL'),
-            auth_cookies=crawler.settings.get('AUTH_COOKIES'),
-            logout_url=crawler.settings.get('LOGOUT_URL'),
-            splash_url=crawler.settings.get('SPLASH_URL'),
-            )
+        return cls(**{name.lower(): crawler.settings.get(name) for name in [
+            'AUTOLOGIN_URL', 'AUTH_COOKIES', 'LOGOUT_URL', 'SPLASH_URL',
+            'LOGIN_URL', 'USERNAME', 'PASSWORD']})
 
     def process_request(self, request, spider):
         ''' Login if we are not logged in yet.
@@ -90,7 +95,10 @@ class AutologinMiddleware:
             request = requests.post(
                 urljoin(self.autologin_url, '/login-cookies'),
                 data=json.dumps({
-                    'url': url,
+                    'url': urljoin(url, self.login_url) if self.login_url else
+                           url,
+                    'username': self.username,
+                    'password': self.password,
                     'splash_url': self.splash_url,
                 }),
                 headers={'content-type': 'application/json'})

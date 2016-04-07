@@ -3,6 +3,7 @@ import os, tempfile
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase
 from twisted.web.resource import Resource
+from twisted.web.util import Redirect
 from scrapy.crawler import CrawlerRunner
 from scrapy.settings import Settings
 from scrapy.utils.log import configure_logging
@@ -39,7 +40,7 @@ def text_resource(content, name=None):
     class Page(Resource):
         isLeaf = True
         def render_GET(self, request):
-            return content.encode('utf-8')
+            return content.encode()
     if name:
         Page.__name__ = name
     return Page
@@ -98,7 +99,7 @@ class WithFile(Resource):
     def __init__(self):
         Resource.__init__(self)
         self.putChild(b'', text_resource(
-            html('<a href="./file.pdf">file</a>'))())
+            html('<a href="/file.pdf">file</a>'))())
         self.putChild(b'file.pdf', text_resource('pdf file content')())
 
 
@@ -124,3 +125,57 @@ class TestDocuments(SpiderTestCase):
             root_url + '/file.pdf'
         with open(file_item['obj_stored_url']) as f:
             assert f.read() == 'pdf file content'
+
+
+class Login(Resource):
+
+    class Login(Resource):
+        isLeaf = True
+        def render_GET(self, request):
+            return html(
+                '<form action="/login" method="POSt">'
+                '<input type="text" name="login">'
+                '<input type="password" name="password">'
+                '<input type="submit" value="Login">'
+                '</form>').encode()
+        def render_POST(self, request):
+            if request.args[b'login'][0] == b'admin' and \
+                    request.args[b'password'][0] == b'secret':
+                request.setHeader(b'set-cookie', b'_uctest_auth=yes')
+            return Redirect(b'/').render(request)
+
+    class Index(Resource):
+        isLeaf = True
+        def render_GET(self, request):
+            if request.received_cookies.get(b'_uctest_auth') == b'yes':
+                return html('<a href="/hidden">Go get it</a>').encode()
+            else:
+                return html('<a href="/login">Login</a>').encode()
+
+    def __init__(self):
+        Resource.__init__(self)
+        self.putChild(b'', Login.Index())
+        self.putChild(b'login', Login.Login())
+        self.putChild(b'hidden', text_resource(html('hidden resource'))())
+
+
+class TestAutologin(SpiderTestCase):
+    @property
+    def settings(self):
+        return  {
+            'USERNAME': 'admin',
+            'PASSWORD': 'secret',
+            'LOGIN_URL': '/login',
+        }
+
+    @defer.inlineCallbacks
+    def test_login(self):
+        ''' No logout links, just one page after login.
+        '''
+        with MockServer(Login) as s:
+            root_url = s.root_url
+            yield self.crawler.crawl(url=root_url)
+        spider = self.crawler.spider
+        assert hasattr(spider, 'collected_items')
+        assert len(spider.collected_items) == 2
+        assert spider.collected_items[1]['url'] == root_url + '/hidden'
