@@ -1,7 +1,8 @@
 Undercrawler
 ============
 
-https://travis-ci.org/TeamHG-Memex/undercrawler.svg?branch=master
+[![Build Status](https://travis-ci.org/TeamHG-Memex/undercrawler.svg?branch=master)](https://travis-ci.org/TeamHG-Memex/undercrawler)
+[![codecov.io](https://codecov.io/github/TeamHG-Memex/undercrawler/coverage.svg?branch=master)](https://codecov.io/github/TeamHG-Memex/undercrawler?branch=master)
 
 This is a generic scrapy crawler. It is designed to handle a number
 of challenges that are hard for traditional generic crawlers, such as
@@ -122,3 +123,22 @@ Scripts
   show crawling stats, including ``extracted_metadata``
 * ``./scripts/gen_supervisor_configs.py``:
   generate supervisord configs for crawlers from a list of urls
+
+Tests
+-----
+
+Run all tests with:
+
+    tox
+
+This assumes that splash is running on the default url http://127.0.0.1:8050,
+you can pass it to tests like this (required on OS X with splash in docker):
+
+    SPLASH_URL=http://192.168.99.100:8050 tox
+
+Note that you can not use an external splash instance, because tests start
+local test servers.
+
+Tests are run using py.test, you can pass arguments after ``--``:
+
+    tox -- tests/test_spider.py

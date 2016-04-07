@@ -1,5 +1,5 @@
--e git+git@github.com:scrapy/scrapy.git@288f8c09f8bac4c92f49332c8a5f5a21a182cc15#egg=scrapy
--e git+git@github.com:scrapy-plugins/scrapy-splash.git@b692adb3018141e6510e0174270ccf3787e1f48f#egg=scrapyjs
+git+https://github.com/scrapy/scrapy.git@288f8c09f8bac4c92f49332c8a5f5a21a182cc15
+git+https://github.com/scrapy-plugins/scrapy-splash.git@b692adb3018141e6510e0174270ccf3787e1f48f
 Formasaurus[with-deps]==0.7.1
 autopager==0.1
 datasketch==0.1.35
