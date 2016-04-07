@@ -128,10 +128,9 @@ class TestDocuments(SpiderTestCase):
 
 
 def is_authenticated(request):
-    session_id = request.received_cookies.get(b'_uctest_auth')
-    is_auth = session_id == Login.session_id
-    if not is_auth and session_id:
-        print('erase header')
+    is_auth = request.received_cookies.get(b'_uctest_auth') == Login.session_id
+    # TODO - reset it only if it is present
+    if not is_auth and b'_uctest_auth' in request.received_cookies:
         request.setHeader(b'set-cookie', b'_uctest_auth=')
     return is_auth
 
@@ -152,6 +151,9 @@ class Login(Resource):
     class Login(Resource):
         isLeaf = True
         def render_GET(self, request):
+            # Erase cookie if it's wrong. Django does it, but I'm not sure
+            # all auth systems do it, so it'll be nice to work even without it.
+            is_authenticated(request)
             return html(
                 '<form action="/login" method="POSt">'
                 '<input type="text" name="login">'
