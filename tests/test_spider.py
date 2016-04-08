@@ -128,9 +128,9 @@ class TestDocuments(SpiderTestCase):
 
 
 def is_authenticated(request):
-    is_auth = request.received_cookies.get(b'_uctest_auth') == Login.session_id
-    # TODO - reset it only if it is present
-    if not is_auth and b'_uctest_auth' in request.received_cookies:
+    session_id = request.received_cookies.get(b'_uctest_auth')
+    is_auth = session_id == Login.session_id
+    if not is_auth and session_id:
         request.setHeader(b'set-cookie', b'_uctest_auth=')
     return is_auth
 
@@ -151,9 +151,6 @@ class Login(Resource):
     class Login(Resource):
         isLeaf = True
         def render_GET(self, request):
-            # Erase cookie if it's wrong. Django does it, but I'm not sure
-            # all auth systems do it, so it'll be nice to work even without it.
-            is_authenticated(request)
             return html(
                 '<form action="/login" method="POSt">'
                 '<input type="text" name="login">'
@@ -197,13 +194,13 @@ class LoginWithLogout(Login):
             '<a href="/one">one</a> | '
             '<a href="/logout1">logout1</a> | '
             '<a href="/two">two</a> | '
-           #'<a href="/logout2">logout2</a> | '
+            '<a href="/logout2">logout2</a> | '
             '<a href="/three">three</a>'
             ))())
         self.putChild(b'one', authenticated_text(html('1'))())
         self.putChild(b'logout1', self.Logout())
         self.putChild(b'two', authenticated_text(html('2'))())
-       #self.putChild(b'logout2', self.Logout())
+        self.putChild(b'logout2', self.Logout())
         self.putChild(b'three', authenticated_text(html('3'))())
 
 
