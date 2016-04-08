@@ -143,7 +143,6 @@ class AutologinMiddleware:
         return response
 
     def is_logout(self, response):
-        auth_cookies_names = {c['name'] for c in self.auth_cookies
-                              if c['value']}
-        return any(m.name in auth_cookies_names and m.value == ''
-                   for m in response.cookiejar)
+        auth_cookies = {c['name'] for c in self.auth_cookies if c['value']}
+        response_cookies = {m.name for m in response.cookiejar if m.value}
+        return bool(auth_cookies - response_cookies)
