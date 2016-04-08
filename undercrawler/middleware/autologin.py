@@ -113,6 +113,7 @@ class AutologinMiddleware:
             elif status == 'solved':
                 cookies = response.get('cookies')
                 if cookies:
+                    cookies = _cookies_to_har(cookies)
                     logger.debug('Got cookies after login %s', cookies)
                     return cookies
                 else:
@@ -146,3 +147,16 @@ class AutologinMiddleware:
         auth_cookies = {c['name'] for c in self.auth_cookies if c['value']}
         response_cookies = {m.name for m in response.cookiejar if m.value}
         return bool(auth_cookies - response_cookies)
+
+
+
+def _cookies_to_har(cookies):
+    har_cookies = []
+    for c in cookies:
+        c = dict(c)
+        expires = c.get('expires')
+        if isinstance(expires, int):
+            tm = time.gmtime(expires)
+            c['expires'] = time.strftime("%Y-%m-%dT%H:%M:%SZ", tm)
+        har_cookies.append(c)
+    return har_cookies
