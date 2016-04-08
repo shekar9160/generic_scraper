@@ -38,6 +38,9 @@ def print_stats(f, show=None, skip_unique=False, max_int_value=5,
         too_common = get_too_common_shingles(f, limit=1000)
     min_timestamp = max_timestamp = None
     for i, item in enumerate(item_reader(f)):
+        stats.update([
+            'content_type: ' + item['content_type'],
+            'content_type[0]: ' + item['content_type'].split('/')[0]])
         if min_timestamp is None:
             min_timestamp = item['timestamp']
         max_timestamp = item['timestamp']
