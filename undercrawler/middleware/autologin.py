@@ -149,14 +149,11 @@ class AutologinMiddleware:
         return bool(auth_cookies - response_cookies)
 
 
-
 def _cookies_to_har(cookies):
-    har_cookies = []
-    for c in cookies:
-        c = dict(c)
-        expires = c.get('expires')
-        if isinstance(expires, int):
-            tm = time.gmtime(expires)
-            c['expires'] = time.strftime("%Y-%m-%dT%H:%M:%SZ", tm)
-        har_cookies.append(c)
-    return har_cookies
+    # Leave only documented cookie attributes
+    return [{
+        'name': c['name'],
+        'value': c['value'],
+        'path': c.get('path', '/'),
+        'domain': c.get('domain', ''),
+        } for c in cookies]
