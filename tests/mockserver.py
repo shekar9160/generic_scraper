@@ -11,8 +11,8 @@ class MockServer():
     def __init__(self, resource):
         self.resource = '{}.{}'.format(resource.__module__, resource.__name__)
         self.proc = None
-        self.root_url = 'http://%s:%d' % (
-            socket.gethostbyname(socket.gethostname()), PORT)
+        host = socket.gethostbyname(socket.gethostname())
+        self.root_url = 'http://%s:%d' % (host, PORT)
 
     def __enter__(self):
         self.proc = Popen(

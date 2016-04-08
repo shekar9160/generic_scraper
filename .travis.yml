@@ -12,6 +12,14 @@ services:
 
 before_install:
     - docker run -d -p 8050:8050 scrapinghub/splash
+    # Autologin
+    - pip install -U pip wheel
+    - git clone https://github.com/TeamHG-Memex/autologin.git -b crawler-integration
+    - pip install --trusted-host=ccdd0ebb5a931e58c7c5-aae005c4999d7244ac63632f8b80e089.r77.cf2.rackcdn.com --find-links=http://ccdd0ebb5a931e58c7c5-aae005c4999d7244ac63632f8b80e089.r77.cf2.rackcdn.com numpy scipy scikit-learn
+    - pip install -r autologin/requirements.txt --no-binary Formasaurus
+    - python -c "import formasaurus; formasaurus.extract_forms('a')"
+    - cd autologin && python setup.py install
+    - autologin-http-api &
 
 addons:
     apt:

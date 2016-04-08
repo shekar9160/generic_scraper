@@ -97,6 +97,9 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
 - ``SEARCH_TERMS_FILE`` - file with extra search terms to use (one per line)
 - ``SPLASH_URL`` - url of the splash instance
+- ``USERNAME``, ``PASSWORD``, ``LOGIN_URL`` - specify values to pass to
+  autologin - use them if you do not want to use autologin keychain UI.
+  ``LOGIN_URL`` is a relative url.
 
 You can also pass auth cookies explicitly: see ``AutologinMiddleware`` docs.
 
