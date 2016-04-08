@@ -21,10 +21,11 @@ def main():
     cralwer_out = params.pop('cralwer_out')
     if os.path.isdir(cralwer_out):
         for filename in os.listdir(cralwer_out):
-            with open(os.path.join(cralwer_out, filename)) as f:
-                print()
-                print(filename)
-                print_stats(f, **params)
+            if filename.endswith('.json') or filename.endswith('.jl'):
+                with open(os.path.join(cralwer_out, filename)) as f:
+                    print()
+                    print(filename)
+                    print_stats(f, **params)
     else:
         with open(cralwer_out) as f:
             print_stats(f, **params)
