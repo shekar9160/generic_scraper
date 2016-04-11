@@ -11,7 +11,7 @@ import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.utils.url import canonicalize_url
 from scrapy.utils.python import unique
-from scrapyjs import SplashRequest
+from scrapy_splash import SplashRequest
 
 from ..utils import cached_property
 from ..items import CDRItem

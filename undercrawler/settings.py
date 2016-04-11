@@ -33,12 +33,12 @@ DOWNLOADER_MIDDLEWARES = {
 }
 if USE_SPLASH:
     DOWNLOADER_MIDDLEWARES.update({
-        'scrapyjs.SplashCookiesMiddleware': 723,
-        'scrapyjs.SplashMiddleware': 725,
+        'scrapy_splash.SplashCookiesMiddleware': 723,
+        'scrapy_splash.SplashMiddleware': 725,
         'scrapy.downloadermiddlewares.httpcompression'
             '.HttpCompressionMiddleware': 810,
     })
-    DUPEFILTER_CLASS = 'scrapyjs.SplashAwareDupeFilter'
+    DUPEFILTER_CLASS = 'scrapy_splash.SplashAwareDupeFilter'
 
 COOKIES_ENABLED = False
 

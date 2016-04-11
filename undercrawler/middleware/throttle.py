@@ -1,6 +1,6 @@
 from scrapy.extensions.throttle import AutoThrottle
 from scrapy.exceptions import NotConfigured
-from scrapyjs.response import SplashJsonResponse
+from scrapy_splash.response import SplashJsonResponse
 
 
 class SplashAwareAutoThrottle(AutoThrottle):
