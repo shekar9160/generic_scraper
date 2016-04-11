@@ -110,6 +110,9 @@ class AutologinMiddleware:
                 continue
             elif status == 'skipped':
                 return None
+            elif status == 'error':
+                logger.error("Can't login; crawl will continue without auth.")
+                return None
             elif status == 'solved':
                 cookies = response.get('cookies')
                 if cookies:
