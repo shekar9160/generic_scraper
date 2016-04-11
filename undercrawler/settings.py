@@ -37,7 +37,7 @@ if USE_SPLASH:
         'scrapy.downloadermiddlewares.httpcompression'
             '.HttpCompressionMiddleware': 810,
     })
-    DUPEFILTER_CLASS = 'undercrawler.splash.HHSplashAwareDupefilter'
+    DUPEFILTER_CLASS = 'scrapyjs.SplashAwareDupeFilter'
 
 COOKIES_ENABLED = False
 
