@@ -29,6 +29,7 @@ ITEM_PIPELINES = {'undercrawler.documents_pipeline.CDRDocumentsPipeline': 1}
 DOWNLOADER_MIDDLEWARES = {
     'undercrawler.middleware.AvoidDupContentMiddleware': 200,
     'undercrawler.middleware.AutologinMiddleware': 584,
+    'undercrawler.middleware.SplashAwareAutoThrottle': 722,
 }
 if USE_SPLASH:
     DOWNLOADER_MIDDLEWARES.update({
@@ -44,11 +45,12 @@ COOKIES_ENABLED = False
 # Run full headless-horseman scripts
 RUN_HH = True
 
-DOWNLOAD_DELAY = 3
+DOWNLOAD_DELAY = 0.2  # Adjusted by autothrottle
+SPLASH_AUTOTHROTTLE_ENABLED = True
 
+# HH scripts in Splash take a while to execute, so use higher values here
 CONCURRENT_REQUESTS = 32
-# Using small value here to retry less requests due to logouts
-CONCURRENT_REQUESTS_PER_DOMAIN = 4
+CONCURRENT_REQUESTS_PER_DOMAIN = 32
 
 DEPTH_PRIORITY = 1
 SCHEDULER_DISK_QUEUE = 'scrapy.squeues.PickleFifoDiskQueue'
