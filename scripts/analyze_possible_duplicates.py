@@ -48,7 +48,6 @@ def analyze_file(name, f, verbose=False):
         lsh.insert(key, min_hash)
     paths = [''.join([p.netloc, p.path]) for p in map(urlsplit, urls)]
     duplicates = get_duplicates(lsh, documents, verbose=verbose)
-    # TODO - now learn what parameters are important and what are not
     print(name.ljust(40), '\t'.join(map(str, [
         len(urls), len(set(urls)), len(set(paths)),
         n_unique(documents, duplicates),
