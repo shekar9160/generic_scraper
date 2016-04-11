@@ -40,6 +40,11 @@ if USE_SPLASH:
     })
     DUPEFILTER_CLASS = 'scrapy_splash.SplashAwareDupeFilter'
 
+# use the same user agent as autologin by default
+USER_AGENT = ('Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 '
+              '(KHTML, like Gecko) Ubuntu Chromium/43.0.2357.130 '
+              'Chrome/43.0.2357.130 Safari/537.36')
+
 COOKIES_ENABLED = False
 
 # Run full headless-horseman scripts
@@ -66,9 +71,6 @@ RETRY_ENABLED = True
 
 
 # Unused settings from template
-
-# Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'undercrawler (+http://www.yourdomain.com)'
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
