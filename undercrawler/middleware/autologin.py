@@ -1,6 +1,5 @@
 from http.cookies import SimpleCookie
 from urllib.parse import urljoin
-import json
 import logging
 import time
 from copy import deepcopy
@@ -94,14 +93,14 @@ class AutologinMiddleware:
         while True:
             request = requests.post(
                 urljoin(self.autologin_url, '/login-cookies'),
-                data=json.dumps({
+                json={
                     'url': urljoin(url, self.login_url) if self.login_url else
                            url,
                     'username': self.username,
                     'password': self.password,
                     'splash_url': self.splash_url,
-                }),
-                headers={'content-type': 'application/json'})
+                }
+            )
             response = request.json()
             status = response['status']
             logger.debug('Got login response with status "%s"', status)
