@@ -6,6 +6,10 @@ from scrapy.utils.request import request_fingerprint
 class HHSplashAwareDupefilter(RFPDupeFilter):
     ''' This is similar to SplashAwareDupeFilter, but only takes
     url, method and body into account, not headers or other stuff.
+
+    Headers are not taken in account because of autologin:
+    we don't want to restart the crawl when we get a new set of cookies
+    after "login -> logout -> login again".
     '''
     def request_fingerprint(self, request):
         fp = request_fingerprint(request, include_headers=False)
