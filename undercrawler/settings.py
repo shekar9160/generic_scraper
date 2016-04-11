@@ -45,12 +45,12 @@ COOKIES_ENABLED = False
 # Run full headless-horseman scripts
 RUN_HH = True
 
-DOWNLOAD_DELAY = 0.2
+DOWNLOAD_DELAY = 0.2  # Adjusted by autothrottle
 SPLASH_AUTOTHROTTLE_ENABLED = True
 
+# HH scripts in Splash take a while to execute, so use higher values here
 CONCURRENT_REQUESTS = 32
-# Using smaller value here to retry less requests due to logouts
-CONCURRENT_REQUESTS_PER_DOMAIN = 8
+CONCURRENT_REQUESTS_PER_DOMAIN = 32
 
 DEPTH_PRIORITY = 1
 SCHEDULER_DISK_QUEUE = 'scrapy.squeues.PickleFifoDiskQueue'
