@@ -9,7 +9,7 @@ import autopager
 import formasaurus
 import scrapy
 from scrapy.linkextractors import LinkExtractor
-from scrapy.utils.url import canonicalize_url
+from scrapy.utils.url import canonicalize_url, add_http_if_no_scheme
 from scrapy.utils.python import unique
 from scrapy_splash import SplashRequest
 
@@ -28,7 +28,7 @@ class BaseSpider(scrapy.Spider):
                 urls = [line.strip() for line in f]
         else:
             urls = [url]
-        self.start_urls = [self._normalize_url(_url) for _url in urls]
+        self.start_urls = [add_http_if_no_scheme(_url) for _url in urls]
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
         self._reset_link_extractors()
         self.state = {}
@@ -184,11 +184,6 @@ class BaseSpider(scrapy.Spider):
             version=2.0,
             **extra)
 
-    def _normalize_url(self, url):
-        if not url.startswith('http'):
-            url = 'http://' + url
-        return url
-
     def _allowed_re(self, url):
         http_www = r'^https?://(www\.)?'
         if not self.settings.getbool('HARD_URL_CONSTRAINT'):
@@ -257,7 +252,6 @@ def _dont_increase_depth(response):
         yield
     finally:
         response.meta['depth'] += 1
-
 
 
 _onclick_search = re.compile("(?P<sep>('|\"))(?P<url>.+?)(?P=sep)").search
