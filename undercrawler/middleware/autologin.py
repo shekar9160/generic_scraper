@@ -125,7 +125,6 @@ class AutologinMiddleware:
     def process_response(self, request, response, spider):
         ''' If we were logged out, login again and retry request.
         '''
-        logger.debug('response %s cookies %s', response, response.cookiejar)
         if self.is_logout(response):
             logger.debug('Logout at %s %s',
                          response.url, response.cookiejar)
@@ -146,7 +145,7 @@ class AutologinMiddleware:
         return response
 
     def is_logout(self, response):
-        if self.auth_cookies:
+        if self.auth_cookies and hasattr(response, 'cookiejar'):
             auth_cookies = {c['name'] for c in self.auth_cookies if c['value']}
             response_cookies = {m.name for m in response.cookiejar if m.value}
             return bool(auth_cookies - response_cookies)

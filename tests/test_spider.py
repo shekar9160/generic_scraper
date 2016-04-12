@@ -95,12 +95,19 @@ class TestBasic(SpiderTestCase):
         assert item2['raw_content'] == html('two')
 
 
+class PDFFile(Resource):
+    isLeaf = True
+    def render_GET(self, response):
+        response.setHeader(b'content-type', b'application/pdf')
+        return b'pdf file content'
+
+
 class WithFile(Resource):
     def __init__(self):
         super().__init__()
         self.putChild(b'', text_resource(
             html('<a href="/file.pdf">file</a>'))())
-        self.putChild(b'file.pdf', text_resource('pdf file content')())
+        self.putChild(b'file.pdf', PDFFile())
 
 
 class TestDocuments(SpiderTestCase):

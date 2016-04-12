@@ -1,5 +1,6 @@
 import logging, time
 
+from scrapy.http.response.text import TextResponse
 from scrapy.exceptions import IgnoreRequest, NotConfigured
 
 from ..dupe_predict import DupePredictor
@@ -48,6 +49,8 @@ class AvoidDupContentMiddleware:
                 raise IgnoreRequest
 
     def process_response(self, request, response, spider):
+        if not hasattr(response, 'xpath'):
+            return response
         url, text = response.url, extract_text(response)
         t0 = time.time()
         if self.dupe_predictor:
