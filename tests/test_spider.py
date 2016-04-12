@@ -245,3 +245,34 @@ class TestAutologin(SpiderTestCase):
         assert hasattr(spider, 'collected_items')
         assert {urlsplit(item['url']).path for item in spider.collected_items}\
             == {'/', '/hidden', '/one', '/two', '/three'}
+
+
+class LoginIfUserAgentOk(Login):
+    class _Login(Login._Login):
+        def render_POST(self, request):
+            user_agent = request.requestHeaders.getRawHeaders(b'User-Agent')
+            if user_agent != [b'MyCustomAgent']:
+                Login.session_id = None
+                return html("Invalid User-Agent: %s" % user_agent).encode('utf8')
+            return super(LoginIfUserAgentOk._Login, self).render_POST(request)
+
+
+class TestAutoLoginCustomHeaders(SpiderTestCase):
+    @property
+    def settings(self):
+        return {
+            'USERNAME': 'admin',
+            'PASSWORD': 'secret',
+            'LOGIN_URL': '/login',
+            'USER_AGENT': 'MyCustomAgent',
+        }
+
+    @defer.inlineCallbacks
+    def test_login(self):
+        with MockServer(LoginIfUserAgentOk) as s:
+            root_url = s.root_url
+            yield self.crawler.crawl(url=root_url)
+        spider = self.crawler.spider
+        assert hasattr(spider, 'collected_items')
+        assert len(spider.collected_items) == 2
+        assert spider.collected_items[1]['url'] == root_url + '/hidden'

@@ -37,12 +37,14 @@ class AutologinMiddleware:
     scheduled requests in a separate queue and make request with scrapy).
     '''
     def __init__(self, autologin_url, auth_cookies=None, logout_url=None,
-                 splash_url=None, login_url=None, username=None, password=None):
+                 splash_url=None, login_url=None, username=None, password=None,
+                 user_agent=None):
         self.autologin_url = autologin_url
         self.splash_url = splash_url
         self.login_url = login_url
         self.username = username
         self.password = password
+        self.user_agent = user_agent
         if auth_cookies:
             cookies = SimpleCookie()
             cookies.load(auth_cookies)
@@ -62,7 +64,7 @@ class AutologinMiddleware:
             raise NotConfigured
         return cls(**{name.lower(): crawler.settings.get(name) for name in [
             'AUTOLOGIN_URL', 'AUTH_COOKIES', 'LOGOUT_URL', 'SPLASH_URL',
-            'LOGIN_URL', 'USERNAME', 'PASSWORD']})
+            'LOGIN_URL', 'USERNAME', 'PASSWORD', 'USER_AGENT']})
 
     def process_request(self, request, spider):
         ''' Login if we are not logged in yet.
@@ -90,17 +92,22 @@ class AutologinMiddleware:
 
     def get_auth_cookies(self, url):
         logger.debug('Attempting login at %s', url)
+
+        autologin_endpoint = urljoin(self.autologin_url, '/login-cookies')
+        params = {
+            'url': urljoin(url, self.login_url) if self.login_url else url,
+            'username': self.username,
+            'password': self.password,
+            'splash_url': self.splash_url,
+            'settings': {
+                'ROBOTSTXT_OBEY': False,
+            }
+        }
+        if self.user_agent:
+            params['settings']['USER_AGENT'] = self.user_agent
+
         while True:
-            request = requests.post(
-                urljoin(self.autologin_url, '/login-cookies'),
-                json={
-                    'url': urljoin(url, self.login_url) if self.login_url else
-                           url,
-                    'username': self.username,
-                    'password': self.password,
-                    'splash_url': self.splash_url,
-                }
-            )
+            request = requests.post(autologin_endpoint, json=params)
             response = request.json()
             status = response['status']
             logger.debug('Got login response with status "%s"', status)
