@@ -136,6 +136,8 @@ class TestDocuments(SpiderTestCase):
 
 def is_authenticated(request):
     session_id = request.received_cookies.get(b'_uctest_auth')
+    if not session_id:
+        return False
     is_auth = session_id == Login.session_id
     if not is_auth and session_id:
         request.setHeader(b'set-cookie', b'_uctest_auth=')
@@ -155,7 +157,7 @@ def authenticated_text(content):
 class Login(Resource):
     session_id = None
 
-    class Login(Resource):
+    class _Login(Resource):
         isLeaf = True
         def render_GET(self, request):
             return html(
@@ -172,7 +174,7 @@ class Login(Resource):
                     b'set-cookie', b'_uctest_auth=' + Login.session_id)
             return Redirect(b'/').render(request)
 
-    class Index(Resource):
+    class _Index(Resource):
         isLeaf = True
         def render_GET(self, request):
             if is_authenticated(request):
@@ -182,13 +184,13 @@ class Login(Resource):
 
     def __init__(self):
         super().__init__()
-        self.putChild(b'', self.Index())
-        self.putChild(b'login', self.Login())
+        self.putChild(b'', self._Index())
+        self.putChild(b'login', self._Login())
         self.putChild(b'hidden', authenticated_text(html('hidden resource'))())
 
 
 class LoginWithLogout(Login):
-    class Logout(Resource):
+    class _Logout(Resource):
         isLeaf = True
         def render_GET(self, request):
             Login.session_id = None
@@ -205,9 +207,9 @@ class LoginWithLogout(Login):
             '<a href="/three">three</a>'
             ))())
         self.putChild(b'one', authenticated_text(html('1'))())
-        self.putChild(b'logout1', self.Logout())
+        self.putChild(b'logout1', self._Logout())
         self.putChild(b'two', authenticated_text(html('2'))())
-        self.putChild(b'logout2', self.Logout())
+        self.putChild(b'logout2', self._Logout())
         self.putChild(b'three', authenticated_text(html('3'))())
 
 
