@@ -46,15 +46,20 @@ def print_stats(
     for i, item in enumerate(item_reader(f, limit=limit)):
         if print_urls:
             print(item['url'])
+        content_type = item.get('content_type', 'missing')
         stats.update([
-            'content_type: ' + item['content_type'],
-            'content_type[0]: ' + item['content_type'].split('/')[0]])
+            'content_type: ' + content_type,
+            'content_type[0]: ' + content_type.split('/')[0]])
         if min_timestamp is None:
             min_timestamp = item['timestamp']
         max_timestamp = item['timestamp']
         if duration_limit and \
                 (max_timestamp - min_timestamp) / 1000 > duration_limit:
             break
+        if 'extracted_text' not in item:
+            assert item['obj_stored_url']
+            stats.update(['documents'])
+            continue
         stats.update(['items'])
         for key, value in item['extracted_metadata'].items():
             if isinstance(value, list):
@@ -80,7 +85,8 @@ def print_stats(
             lsh.insert(key, min_hash)
             urls[key] = item['url']
 
-    stats['duration'] = (max_timestamp - min_timestamp) / 1000
+    if max_timestamp and min_timestamp:
+        stats['duration'] = (max_timestamp - min_timestamp) / 1000
     for k, v in sorted(stats.items()):
         print(k.ljust(20), v)
 

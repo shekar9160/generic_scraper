@@ -28,4 +28,5 @@ def item_reader(f, name=None, limit=None, skip_limit=False):
 
 def get_too_common_shingles(f, name=None, limit=None):
     return utils.get_too_common_shingles(
-        (item['extracted_text'] for item in item_reader(f, name, limit=limit)))
+        (item['extracted_text'] for item in item_reader(f, name, limit=limit)
+            if 'extracted_text' in item))
