@@ -1,4 +1,5 @@
 git+https://github.com/scrapy/scrapy.git@288f8c09f8bac4c92f49332c8a5f5a21a182cc15
+botocore
 scrapy-splash==0.3
 Formasaurus[with-deps]==0.7.1
 autopager==0.1
