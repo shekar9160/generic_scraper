@@ -22,13 +22,14 @@ from ..utils import extract_text
 class BaseSpider(scrapy.Spider):
     name = 'base'
 
-    def __init__(self, url, *args, **kwargs):
+    def __init__(self, url, search_terms=None, *args, **kwargs):
         if url.startswith('.'):
             with open(url) as f:
                 urls = [line.strip() for line in f]
         else:
             urls = [url]
         self.start_urls = [add_http_if_no_scheme(_url) for _url in urls]
+        self.search_terms = search_terms
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
         self._reset_link_extractors()
         self.state = {}
@@ -44,7 +45,8 @@ class BaseSpider(scrapy.Spider):
         for url in self.start_urls:
             yield self.splash_request(url, callback=self.parse_first)
 
-    def splash_request(self, url, callback=None, meta=None, **kwargs):
+    def splash_request(
+            self, url, callback=None, meta=None, cls=SplashRequest, **kwargs):
         callback = callback or self.parse
         args = {
             'lua_source': self.lua_source,
@@ -57,7 +59,7 @@ class BaseSpider(scrapy.Spider):
             args['filters'] = 'fanboy-annoyance,easylist'
         if self.settings.getbool('FORCE_TOR'):
             args['proxy'] = 'tor'
-        return SplashRequest(
+        return cls(
             url, callback=callback, meta=meta, args=args, endpoint='execute',
             **kwargs)
 
@@ -125,7 +127,8 @@ class BaseSpider(scrapy.Spider):
 
         # Try submitting forms
         for form, meta in forms:
-            yield from self.handle_form(response.url, form, meta)
+            for request_kwargs in self.handle_form(response.url, form, meta):
+                yield request(**request_kwargs)
 
     def handle_form(self, url, form, meta):
         action = canonicalize_url(urljoin(url, form.action))
@@ -138,11 +141,12 @@ class BaseSpider(scrapy.Spider):
                 self.settings.getint('MAX_DOMAIN_SEARCH_FORMS')):
             self.logger.debug('Found a search form at %s', url)
             self.handled_search_forms.add(action)
-            yield from search_form_requests(
-                url, form, meta,
-                extra_search_terms=self.extra_search_terms,
-                request_kwargs=dict(meta={'is_search': True}),
-            )
+            for request_kwargs in search_form_requests(
+                    url, form, meta,
+                    search_terms=self.search_terms,
+                    extra_search_terms=self.extra_search_terms):
+                request_kwargs['meta'] = {'is_search': True}
+                yield request_kwargs
 
     def download_files(self, response, normal_urls, parent_item):
         ''' Download linked files (will be handled via CDRDocumentsPipeline).

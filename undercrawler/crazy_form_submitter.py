@@ -4,6 +4,7 @@ import string
 
 from scrapy.http import FormRequest
 from scrapy.http.request.form import _get_inputs as get_form_data
+from scrapy_splash import SplashRequest
 
 
 logger = logging.getLogger(__name__)
@@ -11,9 +12,9 @@ logger = logging.getLogger(__name__)
 SEARCH_TERMS = list(string.ascii_lowercase) + list('123456789 *%.?')
 
 
-def search_form_requests(url, form, meta, extra_search_terms=None,
-                         request_kwargs=None):
-    ''' yield search requests, using default search terms and
+def search_form_requests(url, form, meta,
+        search_terms=None, extra_search_terms=None):
+    ''' yield kwargs for search requests, using default search terms and
     extra_search_terms, also randomly refining search if there are such
     options in the form.
     '''
@@ -29,9 +30,9 @@ def search_form_requests(url, form, meta, extra_search_terms=None,
     # 2 and 4 here are just some values that feel right, need tuning
     refinement_options.append([True] * 2 * min(2, n_target_inputs))
 
-    request_kwargs = request_kwargs or {}
     extra_search_terms = set(extra_search_terms or [])
-    main_search_terms = set(SEARCH_TERMS)
+    main_search_terms = set(
+        search_terms if search_terms is not None else SEARCH_TERMS)
     for search_term in (main_search_terms | extra_search_terms):
         for do_random_refinement in refinement_options:
             formdata = _fill_search_form(
@@ -46,12 +47,13 @@ def search_form_requests(url, form, meta, extra_search_terms=None,
                     'Scheduled search: "%s" at %s with priority %d%s',
                     search_term, url, priority,
                     ' with random refinement' if do_random_refinement else '')
-                yield FormRequest(
+                yield dict(
+                    cls=SplashFormRequest,
                     url=url,
                     formdata=formdata,
                     method=form.method,
                     priority=priority,
-                    **request_kwargs)
+                    )
 
 
 def _fill_search_form(search_term, form, meta, do_random_refinement=False):
@@ -72,3 +74,17 @@ def _fill_search_form(search_term, form, meta, do_random_refinement=False):
 def _is_refinement_input(input_type, input_el):
     return (input_type == 'search category / refinement' and
             getattr(input_el, 'type', None) in ['checkbox'])
+
+
+class SplashFormRequest(SplashRequest, FormRequest):
+    def __init__(self, url=None, callback=None, method=None, formdata=None,
+                 body=None, **kwargs):
+        # First init FormRequest to get url, body and method
+        if formdata:
+            FormRequest.__init__(
+                self, url=url, method=method, formdata=formdata)
+            url, method, body = self.url, self.method, self.body
+        # Then pass all other kwargs to SplashRequest
+        SplashRequest.__init__(
+            self, url=url, callback=callback, method=method, body=body,
+            **kwargs)
