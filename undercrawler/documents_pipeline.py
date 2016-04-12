@@ -1,8 +1,12 @@
+import logging
 import os.path
 
 from scrapy.http import Request
 from scrapy.pipelines.files import FilesPipeline, S3FilesStore, FSFilesStore
 from scrapy.exceptions import DropItem
+
+
+logging.getLogger('botocore').setLevel(logging.WARNING)
 
 
 class CDRDocumentsPipeline(FilesPipeline):
