@@ -49,7 +49,7 @@ def main():
                     ['which', 'scrapy']).strip().decode('utf-8'),
                 url=url,
                 log=dout('log', name + '.log'),
-                out=dout('out', name + '.json'),
+                out=dout('out', name + '.jl'),
                 job=dout('job', name),
                 extra=other_args,
                 ))
