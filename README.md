@@ -101,8 +101,6 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
   autologin - use them if you do not want to use autologin keychain UI.
   ``LOGIN_URL`` is a relative url.
 
-You can also pass auth cookies explicitly: see ``AutologinMiddleware`` docs.
-
 Pages are stored in CDRv2 format, with the following custom fields inside
 ``extracted_metadata``:
 
