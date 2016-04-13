@@ -5,7 +5,7 @@ function main(splash)
     splash:init_cookies(cookies)
   end
 
-  response = splash:http_get{splash.args.url, headers=splash.args.headers}
+  local response = splash:http_get{splash.args.url, headers=splash.args.headers}
   if response.ok then
     return response.body
   else
