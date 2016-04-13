@@ -16,6 +16,7 @@ class CDRDocumentsPipeline(FilesPipeline):
         if url:
             return [Request(url, meta={
                 'download_slot': '{} documents'.format(urlsplit(url).netloc),
+                'skip_avoid_dup_content': True,
                 })]
         else:
             return []
