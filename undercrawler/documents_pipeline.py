@@ -1,5 +1,6 @@
 import logging
 import os.path
+from urllib.parse import urlsplit
 
 from scrapy.http import Request
 from scrapy.pipelines.files import FilesPipeline, S3FilesStore, FSFilesStore
@@ -12,7 +13,12 @@ logging.getLogger('botocore').setLevel(logging.WARNING)
 class CDRDocumentsPipeline(FilesPipeline):
     def get_media_requests(self, item, info):
         url = item.get('obj_original_url')
-        return [Request(url)] if url else []
+        if url:
+            return [Request(url, meta={
+                'download_slot': '{} documents'.format(urlsplit(url).netloc),
+                })]
+        else:
+            return []
 
     def item_completed(self, results, item, info):
         if item.get('obj_original_url'):

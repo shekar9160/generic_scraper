@@ -50,7 +50,7 @@ COOKIES_ENABLED = False
 # Run full headless-horseman scripts
 RUN_HH = True
 
-DOWNLOAD_DELAY = 0.2  # Adjusted by autothrottle
+DOWNLOAD_DELAY = 0.1  # Adjusted by AutoThrottle
 SPLASH_AUTOTHROTTLE_ENABLED = True
 
 # HH scripts in Splash take a while to execute, so use higher values here
