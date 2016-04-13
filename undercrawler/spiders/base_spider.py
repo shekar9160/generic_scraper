@@ -31,6 +31,8 @@ class BaseSpider(scrapy.Spider):
         self.start_urls = [add_http_if_no_scheme(_url) for _url in urls]
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
         self._reset_link_extractors()
+        self.images_link_extractor = LinkExtractor(
+            tags=['img'], attrs=['src'], deny_extensions=[])
         self.state = {}
         # Load headless_horseman scripts
         root = os.path.join(os.path.dirname(__file__), '../directives')
@@ -147,10 +149,12 @@ class BaseSpider(scrapy.Spider):
     def download_files(self, response, normal_urls, parent_item):
         ''' Download linked files (will be handled via CDRDocumentsPipeline).
         '''
-        file_urls = {link.url for link in
-                     self.files_link_extractor.extract_links(response)}\
-                    .difference(normal_urls)
-        for url in file_urls:
+        urls = set()
+        for extractor in [
+                self.images_link_extractor, self.files_link_extractor]:
+            urls.update(link.url for link in extractor.extract_links(response))
+        urls.difference_update(normal_urls)
+        for url in urls:
             yield self.cdr_item(
                 url,
                 metadata=dict(
@@ -234,8 +238,8 @@ class BaseSpider(scrapy.Spider):
     def files_link_extractor(self):
         return LinkExtractor(
             allow=self.allowed,
-            tags=['a', 'area', 'img'],
-            attrs=['src', 'href'],
+            tags=['a'],
+            attrs=['href'],
             deny_extensions=[],  # allow all extensions
         )
 
