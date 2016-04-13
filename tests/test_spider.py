@@ -303,3 +303,56 @@ class TestAutoLoginCustomHeaders(SpiderTestCase):
         assert hasattr(spider, 'collected_items')
         assert len(spider.collected_items) == 2
         assert spider.collected_items[1]['url'] == root_url + '/hidden'
+
+
+class Search(Resource):
+    isLeaf = True
+    def render_GET(self, request):
+        results = ''
+        if b'query' in request.args:
+            results = 'You found "{}", congrats!'\
+                      .format(request.args[b'query'][0].decode())
+        return html(
+            '<form action="." class="search">'
+            '<label for="search">Search:</label> '
+            '<input id="search" name="query" type="text"/> '
+            '<input type="submit" value="Search"/>'
+            '</form>'
+            '{}'
+            ''.format(results)).encode()
+
+    def render_POST(self, request):
+        return html('You searched for "{}"'.format(request.args['query']))\
+               .encode()
+
+
+class TestCrazyFormSubmitter(SpiderTestCase):
+    settings = {
+        'AUTOLOGIN_ENABLED': False,
+    }
+    @defer.inlineCallbacks
+    def test(self):
+        with MockServer(Search) as s:
+            root_url = s.root_url
+            yield self.crawler.crawl(url=root_url, search_terms=['a', 'b'])
+        spider = self.crawler.spider
+        assert hasattr(spider, 'collected_items')
+        assert len(spider.collected_items) == 3
+        assert _paths_set(spider.collected_items) == \
+               {'/', '/?query=a', '/?query=b'}
+
+
+def _paths_set(items):
+    paths_set = set()
+    for item in items:
+        _domain, *path = item['url'].split('://', 1)[1].split('/', 1)
+        paths_set.add('/' + (path[0] if path else ''))
+    return paths_set
+
+
+def test_paths_set():
+    assert _paths_set([
+        {'url': 'https://google.com/foo?query=bar'},
+        {'url': 'http://google.com'},
+        {'url': 'http://google.com/'},
+        ]) == {'/foo?query=bar', '/'}
