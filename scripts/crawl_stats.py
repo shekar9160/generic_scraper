@@ -35,8 +35,8 @@ def main():
 
 
 def print_stats(
-    f, show=None, skip_unique=False, max_int_value=5, duration_limit=None,
-    print_duplicates=False, print_urls=False, limit=None):
+        f, show=None, skip_unique=False, max_int_value=5, duration_limit=None,
+        print_duplicates=False, print_urls=False, limit=None):
     stats = Counter()
     if not skip_unique:
         lsh = LSH(threshold=0.9, num_perm=128)
