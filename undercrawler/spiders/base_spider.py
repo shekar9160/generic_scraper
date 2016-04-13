@@ -1,5 +1,4 @@
 import re
-import os.path
 import contextlib
 from datetime import datetime
 import hashlib
@@ -16,7 +15,7 @@ from scrapy_splash import SplashRequest
 from ..utils import cached_property
 from ..items import CDRItem
 from ..crazy_form_submitter import search_form_requests
-from ..utils import extract_text
+from ..utils import extract_text, load_directive
 
 
 class BaseSpider(scrapy.Spider):
@@ -34,12 +33,9 @@ class BaseSpider(scrapy.Spider):
         self.images_link_extractor = LinkExtractor(
             tags=['img'], attrs=['src'], deny_extensions=[])
         self.state = {}
-        # Load headless_horseman scripts
-        root = os.path.join(os.path.dirname(__file__), '../directives')
-        with open(os.path.join(root, 'headless_horseman.lua')) as f:
-            self.lua_source = f.read()
-        with open(os.path.join(root, 'headless_horseman.js')) as f:
-            self.js_source = f.read()
+        # Load headless horseman scripts
+        self.lua_source = load_directive('headless_horseman.lua')
+        self.js_source = load_directive('headless_horseman.js')
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
