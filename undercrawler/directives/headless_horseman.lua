@@ -19,7 +19,7 @@ function main(splash)
   local return_html = get_arg(splash.args.return_html, true)
   local return_png = get_arg(splash.args.return_png, true)
   local url = splash.args.url
-  local method = get_arg(splash.args.http_method, "GET")
+  local http_method = get_arg(splash.args.http_method, "GET")
   local body = get_arg(splash.args.body, nil)
   local headers = get_arg(splash.args.headers, nil)
   local cookies = get_arg(splash.args.cookies, nil)
