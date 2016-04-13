@@ -13,9 +13,6 @@ function main(splash)
   n scroll, on mouseover, etc.
   ]]
 
-  splash.resource_timeout = splash.args.resource_timeout or 15
-  splash.images_enabled = get_arg(splash.args.images_enabled, true)
-
   local debug = get_arg(splash.args.debug, false)
   local run_hh = get_arg(splash.args.run_hh, true)
   local return_har = get_arg(splash.args.return_har, true)
@@ -33,6 +30,17 @@ function main(splash)
   -- higher, based on real world usage...
   local viewport_width = splash.args.viewport_width or 992
   local viewport_height = splash.args.viewport_height or 744
+
+  splash.images_enabled = get_arg(splash.args.images_enabled, true)
+  -- Set different timeouts for the first and for other requests
+  splash.resource_timeout = splash.args.resource_timeout or 15
+  local first_request = true
+  splash:on_request(function(request)
+      if first_request then
+          request:set_timeout(splash.args.first_request_timeout or 60)
+          first_request = false
+      end
+  end)
 
   if cookies then
     splash:init_cookies(cookies)
