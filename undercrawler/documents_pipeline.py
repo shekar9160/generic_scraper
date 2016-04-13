@@ -26,6 +26,8 @@ class CDRDocumentsPipeline(FilesPipeline):
             if len(results) == 1:
                 [(ok, meta)] = results
                 if ok:
+                    if meta['content_type']:
+                        item['content_type'] = meta['content_type']
                     if isinstance(self.store, S3FilesStore):
                         item['obj_stored_url'] = 's3://{}/{}{}'.format(
                             self.store.bucket, self.store.prefix, meta['path'])
@@ -35,3 +37,9 @@ class CDRDocumentsPipeline(FilesPipeline):
                     return item
             raise DropItem
         return item
+
+    def media_downloaded(self, response, request, info):
+        result = super().media_downloaded(response, request, info)
+        result['content_type'] = response.headers.get(b'content-type', b'')\
+                                 .decode('ascii', 'ignore')
+        return result

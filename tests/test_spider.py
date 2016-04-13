@@ -132,6 +132,7 @@ class TestDocuments(SpiderTestCase):
             root_url + '/file.pdf'
         with open(file_item['obj_stored_url']) as f:
             assert f.read() == 'pdf file content'
+        assert file_item['content_type'] == 'application/pdf'
 
 
 def is_authenticated(request):
