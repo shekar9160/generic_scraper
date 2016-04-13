@@ -8,6 +8,7 @@ from twisted.web.util import Redirect
 from scrapy.crawler import CrawlerRunner
 from scrapy.settings import Settings
 from scrapy.utils.log import configure_logging
+from scrapy.utils.python import to_bytes
 
 import undercrawler.settings
 from undercrawler.spiders import BaseSpider
@@ -41,7 +42,8 @@ def text_resource(content):
     class Page(Resource):
         isLeaf = True
         def render_GET(self, request):
-            return content.encode()
+            request.setHeader(b'content-type', b'text/html')
+            return to_bytes(content)
     return Page
 
 
@@ -95,19 +97,25 @@ class TestBasic(SpiderTestCase):
         assert item2['raw_content'] == html('two')
 
 
+FILE_CONTENTS = 'ёюя'.encode('cp1251')
+
+
 class PDFFile(Resource):
     isLeaf = True
-    def render_GET(self, response):
-        response.setHeader(b'content-type', b'application/pdf')
-        return b'pdf file content'
+    def render_GET(self, request):
+        request.setHeader(b'content-type', b'application/pdf')
+        return FILE_CONTENTS
 
 
 class WithFile(Resource):
     def __init__(self):
         super().__init__()
-        self.putChild(b'', text_resource(
-            html('<a href="/file.pdf">file</a>'))())
+        self.putChild(b'', text_resource(html(
+            '<a href="/file.pdf">file</a> '
+            '<a href="/forbidden.pdf">forbidden file</a>'
+            ))())
         self.putChild(b'file.pdf', PDFFile())
+        self.putChild(b'forbidden.pdf', text_resource(FILE_CONTENTS * 2)())
 
 
 class TestDocuments(SpiderTestCase):
@@ -126,13 +134,21 @@ class TestDocuments(SpiderTestCase):
             yield self.crawler.crawl(url=root_url)
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 2
-        file_item = spider.collected_items[1]
+        assert len(spider.collected_items) == 3
+        file_item = find_item('/file.pdf', spider.collected_items)
         assert file_item['url'] == file_item['obj_original_url'] == \
             root_url + '/file.pdf'
-        with open(file_item['obj_stored_url']) as f:
-            assert f.read() == 'pdf file content'
+        with open(file_item['obj_stored_url'], 'rb') as f:
+            assert f.read() == FILE_CONTENTS
         assert file_item['content_type'] == 'application/pdf'
+        forbidden_item = find_item('/forbidden.pdf', spider.collected_items)
+        with open(forbidden_item['obj_stored_url'], 'rb') as f:
+            assert f.read() == FILE_CONTENTS * 2
+
+
+def find_item(substring, items):
+    [item] = [item for item in items if substring in item['url']]
+    return item
 
 
 def is_authenticated(request):
@@ -179,7 +195,10 @@ class Login(Resource):
         isLeaf = True
         def render_GET(self, request):
             if is_authenticated(request):
-                return html('<a href="/hidden">Go get it</a>').encode()
+                return html(
+                    '<a href="/hidden">hidden</a> '
+                    '<a href="/file.pdf">file.pdf</a>'
+                ).encode()
             else:
                 return html('<a href="/login">Login</a>').encode()
 
@@ -188,6 +207,7 @@ class Login(Resource):
         self.putChild(b'', self._Index())
         self.putChild(b'login', self._Login())
         self.putChild(b'hidden', authenticated_text(html('hidden resource'))())
+        self.putChild(b'file.pdf', authenticated_text('data')())
 
 
 class LoginWithLogout(Login):
@@ -217,10 +237,12 @@ class LoginWithLogout(Login):
 class TestAutologin(SpiderTestCase):
     @property
     def settings(self):
+        self.tempdir = tempfile.TemporaryDirectory()
         return  {
             'USERNAME': 'admin',
             'PASSWORD': 'secret',
             'LOGIN_URL': '/login',
+            'FILES_STORE': 'file://' + self.tempdir.name,
         }
 
     @defer.inlineCallbacks
@@ -232,8 +254,12 @@ class TestAutologin(SpiderTestCase):
             yield self.crawler.crawl(url=root_url)
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 2
-        assert spider.collected_items[1]['url'] == root_url + '/hidden'
+        assert len(spider.collected_items) == 3
+        assert {urlsplit(item['url']).path for item in spider.collected_items}\
+            == {'/', '/hidden', '/file.pdf'}
+        file_item = find_item('/file.pdf', spider.collected_items)
+        with open(file_item['obj_stored_url'], 'rb') as f:
+            assert f.read() == b'data'
 
     @defer.inlineCallbacks
     def test_login_with_logout(self):
@@ -245,7 +271,7 @@ class TestAutologin(SpiderTestCase):
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
         assert {urlsplit(item['url']).path for item in spider.collected_items}\
-            == {'/', '/hidden', '/one', '/two', '/three'}
+            == {'/', '/hidden', '/one', '/two', '/three', '/file.pdf'}
 
 
 class LoginIfUserAgentOk(Login):

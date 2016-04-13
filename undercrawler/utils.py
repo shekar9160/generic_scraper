@@ -1,3 +1,4 @@
+import os.path
 from hashlib import sha1
 from collections import defaultdict
 
@@ -51,3 +52,9 @@ def get_min_hash(text, too_common, num_perm=128):
         if shingle_h.hexdigest() not in too_common:
             min_hash.digest(shingle_h)
     return min_hash
+
+
+def load_directive(filename):
+    root = os.path.join(os.path.dirname(__file__), 'directives')
+    with open(os.path.join(root, filename)) as f:
+        return f.read()
