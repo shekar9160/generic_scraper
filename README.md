@@ -81,6 +81,8 @@ or ensure that all urls use common authentication.
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
 - ``ADBLOCK`` - set to 1 to enable AdBlock filters (they can make crawling faster)
+- ``AVOID_DUP_CONTENT_ENABLED`` - set to 0 to disable avoiding duplicates
+  based on urls
 - ``AUTOLOGIN_ENABLED`` - set to 0 to disable autologin middleware
 - ``AUTOLOGIN_URL`` - url of the autologin HTTP API
 - ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
