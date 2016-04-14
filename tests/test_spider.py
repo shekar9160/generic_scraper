@@ -1,5 +1,6 @@
 import os
 import tempfile
+from urllib.parse import urlsplit, urlunsplit
 
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase
@@ -186,21 +187,20 @@ class TestCrazyFormSubmitter(SpiderTestCase):
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
         assert len(spider.collected_items) == 3
-        assert _paths_set(spider.collected_items) == \
+        assert paths_set(spider.collected_items) == \
                {'/', '/?query=a', '/?query=b'}
 
 
-def _paths_set(items):
-    paths_set = set()
+def paths_set(items):
+    _paths_set = set()
     for item in items:
-        _domain, *path = item['url'].split('://', 1)[1].split('/', 1)
-        paths_set.add('/' + (path[0] if path else ''))
-    return paths_set
+        p = urlsplit(item['url'])
+        _paths_set.add(urlunsplit(['', '', p.path, p.query, p.fragment]))
+    return _paths_set
 
 
 def test_paths_set():
-    assert _paths_set([
+    assert paths_set([
         {'url': 'https://google.com/foo?query=bar'},
-        {'url': 'http://google.com'},
         {'url': 'http://google.com/'},
         ]) == {'/foo?query=bar', '/'}

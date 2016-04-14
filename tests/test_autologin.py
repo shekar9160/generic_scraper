@@ -10,7 +10,7 @@ from twisted.web.resource import Resource
 from twisted.web.util import Redirect
 
 from .mockserver import MockServer
-from .test_spider import html, SpiderTestCase, find_item
+from .test_spider import html, SpiderTestCase, find_item, paths_set
 
 
 def get_session_id(request):
@@ -106,6 +106,7 @@ class LoginWithLogout(Login):
         super().__init__()
         self.putChild(b'hidden', authenticated_text(html(
             '<a href="/one">one</a> | '
+            '<a href="/one?action=logout">one</a> | '
             '<a href="/logout1">logout1</a> | '
             '<a href="/two">two</a> | '
             '<a href="/logout2">logout2</a> | '
@@ -126,6 +127,7 @@ class TestAutologin(SpiderTestCase):
             'USERNAME': 'admin',
             'PASSWORD': 'secret',
             'LOGIN_URL': '/login',
+            'LOGOUT_URL': 'action=logout',
             'FILES_STORE': 'file://' + self.tempdir.name,
         }
 
@@ -139,8 +141,8 @@ class TestAutologin(SpiderTestCase):
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
         assert len(spider.collected_items) == 3
-        assert {urlsplit(item['url']).path for item in spider.collected_items}\
-            == {'/', '/hidden', '/file.pdf'}
+        assert paths_set(spider.collected_items) == \
+               {'/', '/hidden', '/file.pdf'}
         file_item = find_item('/file.pdf', spider.collected_items)
         with open(file_item['obj_stored_url'], 'rb') as f:
             assert f.read() == b'data'
@@ -154,8 +156,8 @@ class TestAutologin(SpiderTestCase):
             yield self.crawler.crawl(url=root_url)
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
-        assert {urlsplit(item['url']).path for item in spider.collected_items}\
-            == {'/', '/hidden', '/one', '/two', '/three', '/file.pdf'}
+        assert paths_set(spider.collected_items) == \
+               {'/', '/hidden', '/one', '/two', '/three', '/file.pdf'}
 
 
 class TestAutoLoginCustomHeaders(SpiderTestCase):

@@ -54,9 +54,7 @@ class AutologinMiddleware:
         else:
             self.auth_cookies = None
             self.logged_in = False
-        self.logout_urls = set()
-        if logout_url:
-            self.logout_urls.add(logout_url)
+        self.logout_url = logout_url
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -79,7 +77,7 @@ class AutologinMiddleware:
         if not self.logged_in:
             self.auth_cookies = self.get_auth_cookies(request.url)
             self.logged_in = True
-        elif any(url in request.url for url in self.logout_urls):
+        elif self.logout_url and self.logout_url in request.url:
             logger.debug('Ignoring logout request %s', request.url)
             raise IgnoreRequest
 
@@ -146,8 +144,7 @@ class AutologinMiddleware:
                 return retryreq
             logger.debug('Logged out at %s, will retry login', response.url)
             self.auth_cookies = self.get_auth_cookies(response.url)
-            # TODO - could have been an expired session, do not judge too early
-            self.logout_urls.add(response.url)
+            # This request will not be retried
             raise IgnoreRequest
         return response
 
