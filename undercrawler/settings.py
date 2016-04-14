@@ -34,7 +34,7 @@ DOWNLOADER_MIDDLEWARES = {
 if USE_SPLASH:
     DOWNLOADER_MIDDLEWARES.update({
         'scrapy_splash.SplashCookiesMiddleware': 723,
-        'undercrawler.middleware.SplashMiddleware': 725,
+        'scrapy_splash.SplashMiddleware': 725,
         'scrapy.downloadermiddlewares.httpcompression'
             '.HttpCompressionMiddleware': 810,
     })
