@@ -2,6 +2,7 @@ import os
 import tempfile
 from urllib.parse import urlsplit, urlunsplit
 
+import pytest
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase
 from twisted.web.resource import Resource
@@ -204,3 +205,31 @@ def test_paths_set():
         {'url': 'https://google.com/foo?query=bar'},
         {'url': 'http://google.com/'},
         ]) == {'/foo?query=bar', '/'}
+
+
+class LotsOfLinks(Resource):
+    size_1 = 100
+    size_2 = 10
+    def __init__(self):
+        super().__init__()
+        self.putChild(b'', text_resource(html(
+            '<br>'.join('<a href="/page{0}">Page #{0}</a>'.format(i)
+                        for i in range(self.size_1))))())
+        for i in range(self.size_1):
+            self.putChild('page{}'.format(i).encode(), text_resource(html(
+                '<br>'.join(
+                    '<a href="/page{0}-{1}">Page {0} #{1}</a>'.format(i, j)
+                    for j in range(self.size_2))))())
+
+
+@pytest.mark.skip('This is not really a test at the moment')
+class TestLotsOfLinks(SpiderTestCase):
+    settings = {
+        'AUTOLOGIN_ENABLED': False,
+    }
+    @defer.inlineCallbacks
+    def test(self):
+        with MockServer(LotsOfLinks) as s:
+            root_url = s.root_url
+            yield self.crawler.crawl(url=root_url)
+        spider = self.crawler.spider
