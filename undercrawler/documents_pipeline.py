@@ -16,6 +16,7 @@ class CDRDocumentsPipeline(FilesPipeline):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lua_source = load_directive('download.lua')
+        self._checksums = set()
 
     def get_media_requests(self, item, info):
         url = item.get('obj_original_url')
@@ -42,7 +43,8 @@ class CDRDocumentsPipeline(FilesPipeline):
         if item.get('obj_original_url'):
             if len(results) == 1:
                 [(ok, meta)] = results
-                if ok:
+                if ok and meta['checksum'] not in self._checksums:
+                    self._checksums.add(meta['checksum'])
                     item['content_type'] = meta['content_type']
                     if isinstance(self.store, S3FilesStore):
                         item['obj_stored_url'] = 's3://{}/{}{}'.format(
