@@ -23,7 +23,10 @@ class SpiderTestCase(TestCase):
     def setUp(self):
         settings = Settings()
         settings.setmodule(undercrawler.settings)
-        settings['DOWNLOAD_DELAY'] = 0.1
+        settings.update({
+            'DOWNLOAD_DELAY': 0.01,
+            'AUTOTHROTTLE_START_DELAY': 0.01,
+            })
         settings['ITEM_PIPELINES']['tests.utils.CollectorPipeline'] = 100
         splash_url = os.environ.get('SPLASH_URL')
         if splash_url:
