@@ -1,6 +1,6 @@
 git+https://github.com/scrapy/scrapy.git@288f8c09f8bac4c92f49332c8a5f5a21a182cc15
 botocore
-git+https://github.com/scrapy-plugins/scrapy-splash.git@b06ac8c24942bb596be873030dd8fb6305b0d9b1
+git+https://github.com/scrapy-plugins/scrapy-splash.git@447d4145cb69e57cb774c3eb1936246a43c3ad62
 Formasaurus[with-deps]==0.7.1
 autopager==0.1
 datasketch==0.1.35
