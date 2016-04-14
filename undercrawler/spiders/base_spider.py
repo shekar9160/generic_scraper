@@ -106,7 +106,8 @@ class BaseSpider(scrapy.Spider):
         # Pagination requests are sent twice, but we don't care because
         # they're be filtered out by a dupefilter.
         normal_urls = {link.url for link in
-                       self.link_extractor.extract_links(response)}
+                       self.link_extractor.extract_links(response)
+                       if not self._looks_like_logout(link)}
         for url in normal_urls:
             yield request(url)
 
@@ -152,7 +153,9 @@ class BaseSpider(scrapy.Spider):
         urls = set()
         for extractor in [
                 self.images_link_extractor, self.files_link_extractor]:
-            urls.update(link.url for link in extractor.extract_links(response))
+            urls.update(
+                link.url for link in extractor.extract_links(response)
+                if not self._looks_like_logout(link))
         urls.difference_update(normal_urls)
         for url in urls:
             yield self.cdr_item(
@@ -247,6 +250,11 @@ class BaseSpider(scrapy.Spider):
     def handled_search_forms(self):
         return self.state.setdefault('handled_search_forms', set())
 
+    def _looks_like_logout(self, link):
+        if not self.settings.getbool('AUTOLOGIN_ENABLED'):
+            return False
+        return _looks_like_logout(link)
+
 
 @contextlib.contextmanager
 def _dont_increase_depth(response):
@@ -308,5 +316,29 @@ def _looks_like_url(txt):
     if re.search(r'\?\w+=.+', txt):
         return True
     if re.match(r"\w+\.html", txt):
+        return True
+    return False
+
+
+def _looks_like_logout(link):
+    """
+    Return True is link looks like a logout link.
+    >>> from scrapy.link import Link
+    >>> _looks_like_logout(Link('/logout', text='Log out'))
+    True
+    >>> _looks_like_logout(Link('/Logout-me', text='Exit'))
+    True
+    >>> _looks_like_logout(Link('/exit', text='Log out'))
+    True
+    >>> _looks_like_logout(Link('/exit', text='Logout'))
+    True
+    >>> _looks_like_logout(Link('/exit', text='Exit'))
+    False
+    """
+    text = link.text.lower()
+    if any(x in text for x in ['logout', 'log out']):
+        return True
+    url = link.url.lower()
+    if any(x in url for x in ['logout']):
         return True
     return False

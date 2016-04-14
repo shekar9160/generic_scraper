@@ -106,16 +106,18 @@ class LoginWithLogout(Login):
         super().__init__()
         self.putChild(b'hidden', authenticated_text(html(
             '<a href="/one">one</a> | '
-            '<a href="/one?action=logout">one</a> | '
-            '<a href="/logout1">logout1</a> | '
+            '<a href="/one?action=l0gout">one</a> | '     # LOGOUT_URL
+            '<a href="/one?action=logout">one</a> | '     # _looks_like_logout
+            '<a href="/one?action=lo9out">Logout</a> | '  # _looks_like_logout
+            '<a href="/l0gout1">l0gout1</a> | '
             '<a href="/two">two</a> | '
-            '<a href="/logout2">logout2</a> | '
+            '<a href="/l0gout2">l0gout2</a> | '
             '<a href="/three">three</a>'
             ))())
         self.putChild(b'one', authenticated_text(html('1'))())
-        self.putChild(b'logout1', self._Logout())
+        self.putChild(b'l0gout1', self._Logout())
         self.putChild(b'two', authenticated_text(html('2'))())
-        self.putChild(b'logout2', self._Logout())
+        self.putChild(b'l0gout2', self._Logout())
         self.putChild(b'three', authenticated_text(html('3'))())
 
 
@@ -127,7 +129,7 @@ class TestAutologin(SpiderTestCase):
             'USERNAME': 'admin',
             'PASSWORD': 'secret',
             'LOGIN_URL': '/login',
-            'LOGOUT_URL': 'action=logout',
+            'LOGOUT_URL': 'action=l0gout',
             'FILES_STORE': 'file://' + self.tempdir.name,
         }
 

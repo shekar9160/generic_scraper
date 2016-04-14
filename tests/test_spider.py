@@ -58,7 +58,7 @@ class Follow(Resource):
     def __init__(self):
         super().__init__()
         self.putChild(b'', text_resource(
-            html('<a href="/one">one</a> | <a href="/two">two</a>'))())
+            html('<a href="/one">one</a> | <a href="/two">Logout</a>'))())
         self.putChild(b'one', text_resource('one')())
         self.putChild(b'two', text_resource('two')())
 
