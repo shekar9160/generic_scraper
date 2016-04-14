@@ -25,6 +25,7 @@ class CDRDocumentsPipeline(FilesPipeline):
                 endpoint='execute',
                 args={'lua_source': self.lua_source},
                 slot_policy=SlotPolicy.SCRAPY_DEFAULT,
+                priority=-2,
                 meta={
                     'download_slot':
                         '{} documents'.format(urlsplit(url).netloc),
