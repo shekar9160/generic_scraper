@@ -116,10 +116,13 @@ class WithFile(Resource):
         super().__init__()
         self.putChild(b'', text_resource(html(
             '<a href="/file.pdf">file</a> '
+            '<a href="/page">page</a> '
             '<a href="/forbidden.pdf">forbidden file</a>'
             ))())
         self.putChild(b'file.pdf', PDFFile())
         self.putChild(b'forbidden.pdf', text_resource(FILE_CONTENTS * 2)())
+        self.putChild(b'page', text_resource(html(
+            '<a href="/file.pdf">file</a>'))())
 
 
 class TestDocuments(SpiderTestCase):
@@ -138,7 +141,7 @@ class TestDocuments(SpiderTestCase):
             yield self.crawler.crawl(url=root_url)
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 3
+        assert len(spider.collected_items) == 4
         file_item = find_item('/file.pdf', spider.collected_items)
         assert file_item['url'] == file_item['obj_original_url'] == \
             root_url + '/file.pdf'
