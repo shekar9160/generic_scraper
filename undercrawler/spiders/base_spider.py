@@ -89,6 +89,7 @@ class BaseSpider(scrapy.Spider):
             from_search=response.meta.get('from_search', False),
             extracted_at=response.meta.get('extracted_at', None),
             depth=response.meta.get('depth', None),
+            priority=response.request.priority,
             forms=[meta for _, meta in forms],
             ))
         yield parent_item
@@ -164,6 +165,7 @@ class BaseSpider(scrapy.Spider):
                     extracted_at=response.url,
                     depth=response.meta.get('depth', None),
                     from_search=response.meta.get('from_search', False),
+                    priority=response.request.priority,
                     ),
                 obj_original_url=url,
                 obj_parent=parent_item.get('_id'),
