@@ -269,5 +269,5 @@ class DupStat:
         return p - 1.96 * math.sqrt(p * q / n)
 
     def __repr__(self):
-        return '<DupStat: {:.0f}% ({} of {})>'.format(
-            100 * self.get_prob(), self.dup, self.total)
+        return '<DupStat: {:.0%} ({} of {})>'.format(
+            self.get_prob(), self.dup, self.total)
