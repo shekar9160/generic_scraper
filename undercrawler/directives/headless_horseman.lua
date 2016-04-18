@@ -86,7 +86,7 @@ function main(splash)
 
   local render = {}
   local entries = splash:history()
-  local last_response = entries[#entries].response
+  local last_entry = entries[#entries]
 
   if return_har then
     render['har'] = splash:har{reset=true}
@@ -101,9 +101,13 @@ function main(splash)
   end
 
   render['url'] = splash:url()
-  render['headers'] = last_response.headers
-  render['http_status'] = last_response.status
   render['cookies'] = splash:get_cookies()
+
+  if last_entry then
+    local last_response = entries[#entries].response
+    render['headers'] = last_response.headers
+    render['http_status'] = last_response.status
+  end
 
   return render
 end
