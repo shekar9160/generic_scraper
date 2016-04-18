@@ -59,6 +59,7 @@ class BaseSpider(scrapy.Spider):
             args['proxy'] = 'tor'
         return cls(
             url, callback=callback, meta=meta, args=args, endpoint='execute',
+            cache_args=['lua_source', 'js_source'],
             **kwargs)
 
     def parse_first(self, response):
