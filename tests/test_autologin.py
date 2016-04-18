@@ -3,7 +3,6 @@ from __future__ import absolute_import
 
 import tempfile
 import uuid
-from urllib.parse import urlsplit
 
 from twisted.internet import defer
 from twisted.web.resource import Resource
@@ -48,7 +47,7 @@ class Login(Resource):
 
         def render_GET(self, request):
             return html(
-                '<form action="/login" method="POSt">'
+                '<form action="/login" method="POST">'
                 '<input type="text" name="login">'
                 '<input type="password" name="password">'
                 '<input type="submit" value="Login">'
