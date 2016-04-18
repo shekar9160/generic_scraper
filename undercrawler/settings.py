@@ -40,6 +40,10 @@ if USE_SPLASH:
     })
     DUPEFILTER_CLASS = 'scrapy_splash.SplashAwareDupeFilter'
 
+SPIDER_MIDDLEWARES = {
+    'scrapy_splash.SplashDeduplicateArgsMiddleware': 100,
+}
+
 # use the same user agent as autologin by default
 USER_AGENT = ('Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 '
               '(KHTML, like Gecko) Ubuntu Chromium/43.0.2357.130 '
