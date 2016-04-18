@@ -233,12 +233,14 @@ class BaseSpider(scrapy.Spider):
 
     @cached_property('_link_extractor')
     def link_extractor(self):
-        return LinkExtractor(allow=self.allowed, unique=False)
+        return LinkExtractor(allow=self.allowed, unique=False,
+                             canonicalize=False)
 
     @cached_property('_iframe_link_extractor')
     def iframe_link_extractor(self):
         return LinkExtractor(
-            allow=self.allowed, tags=['iframe'], attrs=['src'], unique=False)
+            allow=self.allowed, tags=['iframe'], attrs=['src'],
+            unique=False, canonicalize=False)
 
     @cached_property('_files_link_extractor')
     def files_link_extractor(self):
