@@ -107,7 +107,7 @@ class BaseSpider(scrapy.Spider):
         # Follow all in-domain links.
         # Pagination requests are sent twice, but we don't care because
         # they're be filtered out by a dupefilter.
-        normal_urls = {link.url for link in
+        normal_urls = {link_to_url(link) for link in
                        self.link_extractor.extract_links(response)
                        if not self._looks_like_logout(link)}
         for url in normal_urls:
@@ -124,7 +124,7 @@ class BaseSpider(scrapy.Spider):
 
         # go to iframes
         for link in self.iframe_link_extractor.extract_links(response):
-            yield request(link.url, meta={'is_iframe': True})
+            yield request(link_to_url(link), meta={'is_iframe': True})
 
         # Try submitting forms
         for form, meta in forms:
@@ -156,7 +156,7 @@ class BaseSpider(scrapy.Spider):
         for extractor in [
                 self.images_link_extractor, self.files_link_extractor]:
             urls.update(
-                link.url for link in extractor.extract_links(response)
+                link_to_url(link) for link in extractor.extract_links(response)
                 if not self._looks_like_logout(link))
         urls.difference_update(normal_urls)
         for url in urls:
@@ -341,7 +341,22 @@ def _looks_like_logout(link):
     text = link.text.lower()
     if any(x in text for x in ['logout', 'log out']):
         return True
-    url = link.url.lower()
+    url = link_to_url(link).lower()
     if any(x in url for x in ['logout']):
         return True
     return False
+
+
+def link_to_url(link):
+    """
+    >>> from scrapy.link import Link
+    >>> link_to_url(Link("http://example.com/?foo=bar"))
+    'http://example.com/?foo=bar'
+    >>> link_to_url(Link("http://example.com/?foo=bar", fragment="id1"))
+    'http://example.com/?foo=bar#id1'
+    >>> link_to_url(Link("http://example.com/?foo=bar", fragment="!start"))
+    'http://example.com/?foo=bar#!start'
+    """
+    if link.fragment and link.fragment != '#':
+        return "#".join([link.url, link.fragment])
+    return link.url
