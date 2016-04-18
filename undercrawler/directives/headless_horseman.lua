@@ -72,7 +72,7 @@ function main(splash)
           .then(__headless_horseman__.tryMouseoverXhr, 3)
           .then(__headless_horseman__.scroll, window, 'left', 'top')
           .then(__headless_horseman__.cleanup)
-          .then(__headless_horseman__.removeOverlays)
+       // .then(__headless_horseman__.removeOverlays)
           .then(splash.resume);
       }
     ]])
