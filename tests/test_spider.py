@@ -116,7 +116,7 @@ class WithFile(Resource):
         super().__init__()
         self.putChild(b'', text_resource(html(
             '<a href="/file.pdf">file</a> '
-            '<a href="/page">page</a> '
+            '<a href="/page?b=2&a=1">page</a> '
             '<a href="/forbidden.pdf">forbidden file</a>'
             ))())
         self.putChild(b'file.pdf', PDFFile())

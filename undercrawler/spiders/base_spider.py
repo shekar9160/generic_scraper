@@ -158,7 +158,7 @@ class BaseSpider(scrapy.Spider):
             urls.update(
                 link_to_url(link) for link in extractor.extract_links(response)
                 if not self._looks_like_logout(link))
-        urls.difference_update(normal_urls)
+        urls.difference_update(map(canonicalize_url, normal_urls))
         for url in urls:
             yield self.cdr_item(
                 url,
