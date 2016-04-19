@@ -64,7 +64,8 @@ class BaseSpider(scrapy.Spider):
             **kwargs)
 
     def parse_first(self, response):
-        self.allowed += (self._allowed_re(response.url),)
+        self.allowed += (allowed_re(
+            response.url, self.settings.getbool('HARD_URL_CONSTRAINT')),)
         self.logger.info('Updated allowed regexps: %s', self.allowed)
         yield from self.parse(response)
 
@@ -197,12 +198,6 @@ class BaseSpider(scrapy.Spider):
             url=url,
             version=2.0,
             **extra)
-
-    def _allowed_re(self, url):
-        http_www = r'^https?://(www\.)?'
-        if not self.settings.getbool('HARD_URL_CONSTRAINT'):
-            url = urlsplit(url).netloc
-        return re.compile(http_www + re.sub(http_www, '', url), re.I)
 
     def _pagination_urls(self, response):
         return [
@@ -371,3 +366,26 @@ def link_to_url(link):
 def url_fingerprint(url):
     url = canonicalize_url(url, keep_fragments=True)
     return hashlib.sha1(url.encode()).hexdigest()
+
+
+def allowed_re(url, hard_url_constraint):
+    r"""
+    Construct a regexp to check for allowed urls.
+    >>> allowed_re('http://www.example.com/foo', True)
+    re.compile('^https?://(www\\.)?example\\.com/foo', re.IGNORECASE)
+    >>> allowed_re('http://www.example.com/foo', False)
+    re.compile('^https?://(www\\.)?example\\.com', re.IGNORECASE)
+    >>> allowed_re('https://example.com/foo', False)
+    re.compile('^https?://(www\\.)?example\\.com', re.IGNORECASE)
+    >>> bool(allowed_re('https://example.com/foo', False).match('http://www.example.com/bar'))
+    True
+    >>> bool(allowed_re('https://example.com/foo', True).match('http://www.example.com/bar'))
+    False
+    """
+    http_www = r'^https?://(www\.)?'
+    if not hard_url_constraint:
+        p = urlsplit(url)
+        url = '{}://{}'.format(p.scheme, p.netloc)
+    url = re.sub(http_www, '', url)
+    url = re.sub(r'\.', r'\\.', url)
+    return re.compile(http_www + url, re.I)
