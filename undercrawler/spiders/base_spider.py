@@ -33,6 +33,7 @@ class BaseSpider(scrapy.Spider):
         self._reset_link_extractors()
         self.images_link_extractor = LinkExtractor(
             tags=['img'], attrs=['src'], deny_extensions=[])
+        self._files_fingerprints = set()
         self.state = {}
         # Load headless horseman scripts
         self.lua_source = load_directive('headless_horseman.lua')
@@ -160,17 +161,20 @@ class BaseSpider(scrapy.Spider):
                 if not self._looks_like_logout(link))
         urls.difference_update(map(canonicalize_url, normal_urls))
         for url in urls:
-            yield self.cdr_item(
-                url,
-                metadata=dict(
-                    extracted_at=response.url,
-                    depth=response.meta.get('depth', None),
-                    from_search=response.meta.get('from_search', False),
-                    priority=response.request.priority,
-                    ),
-                obj_original_url=url,
-                obj_parent=parent_item.get('_id'),
-                )
+            fp = url_fingerprint(url)
+            if fp not in self._files_fingerprints:
+                self._files_fingerprints.add(fp)
+                yield self.cdr_item(
+                    url,
+                    metadata=dict(
+                        extracted_at=response.url,
+                        depth=response.meta.get('depth', None),
+                        from_search=response.meta.get('from_search', False),
+                        priority=response.request.priority,
+                        ),
+                    obj_original_url=url,
+                    obj_parent=parent_item.get('_id'),
+                    )
 
     def text_cdr_item(self, response, metadata):
         return self.cdr_item(
@@ -362,3 +366,8 @@ def link_to_url(link):
     if link.fragment and link.fragment != '#':
         return "#".join([link.url, link.fragment])
     return link.url
+
+
+def url_fingerprint(url):
+    url = canonicalize_url(url, keep_fragments=True)
+    return hashlib.sha1(url.encode()).hexdigest()
