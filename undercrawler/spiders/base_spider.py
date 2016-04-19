@@ -372,7 +372,7 @@ def allowed_re(url, hard_url_constraint):
     r"""
     Construct a regexp to check for allowed urls.
     >>> allowed_re('http://www.example.com/foo', True)
-    re.compile('^https?://(www\\.)?example\\.com/foo', re.IGNORECASE)
+    re.compile('^https?://(www\\.)?example\\.com\\/foo', re.IGNORECASE)
     >>> allowed_re('http://www.example.com/foo', False)
     re.compile('^https?://(www\\.)?example\\.com', re.IGNORECASE)
     >>> allowed_re('https://example.com/foo', False)
@@ -387,5 +387,4 @@ def allowed_re(url, hard_url_constraint):
         p = urlsplit(url)
         url = '{}://{}'.format(p.scheme, p.netloc)
     url = re.sub(http_www, '', url)
-    url = re.sub(r'\.', r'\\.', url)
-    return re.compile(http_www + url, re.I)
+    return re.compile(http_www + re.escape(url), re.I)

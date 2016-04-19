@@ -6,7 +6,6 @@ NEWSPIDER_MODULE = 'undercrawler.spiders'
 ROBOTSTXT_OBEY = False
 DEPTH_LIMIT = 20
 
-USE_SPLASH = True
 SPLASH_URL = 'http://127.0.0.1:8050'
 
 AUTOLOGIN_URL = 'http://127.0.0.1:8089'
@@ -30,15 +29,12 @@ DOWNLOADER_MIDDLEWARES = {
     'undercrawler.middleware.AvoidDupContentMiddleware': 200,
     'undercrawler.middleware.AutologinMiddleware': 584,
     'undercrawler.middleware.SplashAwareAutoThrottle': 722,
+    'scrapy_splash.SplashCookiesMiddleware': 723,
+    'scrapy_splash.SplashMiddleware': 725,
+    'scrapy.downloadermiddlewares.httpcompression'
+        '.HttpCompressionMiddleware': 810,
 }
-if USE_SPLASH:
-    DOWNLOADER_MIDDLEWARES.update({
-        'scrapy_splash.SplashCookiesMiddleware': 723,
-        'scrapy_splash.SplashMiddleware': 725,
-        'scrapy.downloadermiddlewares.httpcompression'
-            '.HttpCompressionMiddleware': 810,
-    })
-    DUPEFILTER_CLASS = 'scrapy_splash.SplashAwareDupeFilter'
+DUPEFILTER_CLASS = 'undercrawler.dupe_filter.DupeFilter'
 
 SPIDER_MIDDLEWARES = {
     'scrapy_splash.SplashDeduplicateArgsMiddleware': 100,
