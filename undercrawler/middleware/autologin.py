@@ -90,22 +90,21 @@ class AutologinMiddleware:
                 autologin_meta['cookie_dict'] = {
                     c['name']: c['value'] for c in self.auth_cookies}
         else:
-            self._queue.append(request)
+            self._enqueue(request)
             if self.waiting_for_login:
                 raise IgnoreRequest
             else:
-                return self._login_request(request, spider)
+                return self._login_request(request.url, spider)
                 #self.auth_cookies = self.get_auth_cookies(request.url)
                 #self.logged_in = True
 
-    def _on_login_response(self, request, response, spider):
+    def _on_login_response(self, url, response, spider):
         self.waiting_for_login = False
         response_data = json.loads(response.text)
         status = response_data['status']
         logger.debug('Got login response with status "%s"', status)
         if status == 'pending':
-            self.crawler.engine.crawl(
-                self._login_request(request, spider), spider)
+            self.crawler.engine.crawl(self._login_request(url, spider), spider)
             return
         elif status in {'skipped', 'error'}:
             self.auth_cookies = None
@@ -123,17 +122,23 @@ class AutologinMiddleware:
                 logger.error('No cookies after login')
                 self.auth_cookies = None
                 self.skipped = True
-        for req in self._queue:
-            req.dont_filter = True
-            self.crawler.engine.crawl(req, spider)
+        self._process_queue(spider)
 
-    def _login_request(self, request, spider):
+    def _enqueue(self, request):
+        self._queue.append(request)
+
+    def _process_queue(self, spider):
+        for request in self._queue:
+            request.dont_filter = True
+            self.crawler.engine.crawl(request, spider)
+        self._queue[:] = []
+
+    def _login_request(self, url, spider):
         self.waiting_for_login = True
-        logger.debug('Attempting login for %s' % request)
+        logger.debug('Attempting login at %s', url)
         autologin_endpoint = urljoin(self.autologin_url, '/login-cookies')
         params = {
-            'url': urljoin(request.url, self.login_url) if self.login_url
-                   else request.url,
+            'url': urljoin(url, self.login_url) if self.login_url else url,
             'username': self.username,
             'password': self.password,
             'splash_url': self.splash_url,
@@ -151,7 +156,7 @@ class AutologinMiddleware:
             autologin_endpoint, method='POST',
             body=json.dumps(params).encode(),
             headers={'content-type': 'application/json'},
-            callback=partial(self._on_login_response, request, spider=spider),
+            callback=partial(self._on_login_response, url, spider=spider),
             dont_filter=True,
             meta={'skip_autologin': True})
 
@@ -162,18 +167,22 @@ class AutologinMiddleware:
             logger.debug('Logout at %s %s',
                          response.url, response.cookiejar)
             autologin_meta = request.meta['_autologin']
+            retryreq = autologin_meta['request'].copy()
+            retryreq.dont_filter = True
             # We could have already done relogin after initial logout
             if any(autologin_meta['cookie_dict'].get(c['name']) != c['value']
                     for c in self.auth_cookies):
-                retryreq = autologin_meta['request'].copy()
-                retryreq.dont_filter = True
-                logger.debug('Stale request %s was logged out, will retry %s',
+                logger.debug('Request %s was stale, will retry %s',
                              response, retryreq)
                 return retryreq
-            logger.debug('Logged out at %s, will retry login', response.url)
-            self.auth_cookies = self.get_auth_cookies(response.url)
-            # This request will not be retried
-            raise IgnoreRequest
+            if self.waiting_for_login:
+                logger.debug('Enqueue %s', retryreq)
+                self._enqueue(retryreq)
+                raise IgnoreRequest
+            else:
+                # This request will not be retried
+                logger.debug('Logged out at %s, will re-login', response)
+                return self._login_request(response.url, spider)
         return response
 
     def is_logout(self, response):
