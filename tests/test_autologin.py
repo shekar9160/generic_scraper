@@ -130,6 +130,7 @@ class TestAutologin(SpiderTestCase):
             'LOGIN_URL': '/login',
             'LOGOUT_URL': 'action=l0gout',
             'FILES_STORE': 'file://' + self.tempdir.name,
+            'AUTOLOGIN_DOWNLOAD_DELAY': 0.01,
         }
 
     @defer.inlineCallbacks
@@ -169,6 +170,7 @@ class TestAutoLoginCustomHeaders(SpiderTestCase):
             'PASSWORD': 'secret',
             'LOGIN_URL': '/login',
             'USER_AGENT': 'MyCustomAgent',
+            'AUTOLOGIN_DOWNLOAD_DELAY': 0.01,
         }
 
     @defer.inlineCallbacks

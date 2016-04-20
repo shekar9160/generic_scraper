@@ -38,13 +38,14 @@ class AutologinMiddleware:
     '''
     def __init__(self, autologin_url, auth_cookies=None, logout_url=None,
                  splash_url=None, login_url=None, username=None, password=None,
-                 user_agent=None):
+                 user_agent=None, autologin_download_delay=None):
         self.autologin_url = autologin_url
         self.splash_url = splash_url
         self.login_url = login_url
         self.username = username
         self.password = password
         self.user_agent = user_agent
+        self.autologin_download_delay = autologin_download_delay
         if auth_cookies:
             cookies = SimpleCookie()
             cookies.load(auth_cookies)
@@ -62,7 +63,8 @@ class AutologinMiddleware:
             raise NotConfigured
         return cls(**{name.lower(): crawler.settings.get(name) for name in [
             'AUTOLOGIN_URL', 'AUTH_COOKIES', 'LOGOUT_URL', 'SPLASH_URL',
-            'LOGIN_URL', 'USERNAME', 'PASSWORD', 'USER_AGENT']})
+            'LOGIN_URL', 'USERNAME', 'PASSWORD', 'USER_AGENT',
+            'AUTOLOGIN_DOWNLOAD_DELAY']})
 
     def process_request(self, request, spider):
         ''' Login if we are not logged in yet.
@@ -103,6 +105,9 @@ class AutologinMiddleware:
         }
         if self.user_agent:
             params['settings']['USER_AGENT'] = self.user_agent
+        if self.autologin_download_delay:
+            params['settings']['DOWNLOAD_DELAY'] = \
+                self.autologin_download_delay
 
         while True:
             request = requests.post(autologin_endpoint, json=params)
