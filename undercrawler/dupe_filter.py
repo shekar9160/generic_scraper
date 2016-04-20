@@ -1,7 +1,6 @@
 import re
 from copy import deepcopy
 
-from scrapy.utils.url import canonicalize_url
 from scrapy_splash import SplashAwareDupeFilter
 
 
@@ -11,10 +10,7 @@ class DupeFilter(SplashAwareDupeFilter):
     """
     def request_fingerprint(self, request):
         if not request.meta.get('_splash_processed'):
-            # canonicalize_url required only due to a bug (?) in scrapy_splash
-            url = canonicalize_url(
-                re.sub(r'^https?://(www\.)?', 'http://', request.url),
-                keep_fragments=True)
+            url = re.sub(r'^https?://(www\.)?', 'http://', request.url)
             kwargs = {'url': url}
             if 'splash' in request.meta:
                 kwargs['meta'] = deepcopy(request.meta)
