@@ -16,7 +16,7 @@ from undercrawler.spiders import BaseSpider
 from tests.mockserver import MockServer
 
 
-configure_logging({'LOG_FORMAT': '%(levelname)s: %(message)s'})
+configure_logging()
 
 
 class SpiderTestCase(TestCase):
