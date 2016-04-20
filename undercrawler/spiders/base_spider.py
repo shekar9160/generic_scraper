@@ -370,21 +370,43 @@ def url_fingerprint(url):
 
 def allowed_re(url, hard_url_constraint):
     r"""
-    Construct a regexp to check for allowed urls.
+    Construct a regexp to check for allowed urls. The url must be within
+    the start domain or lower (unless hard_url_constraint is True), but can
+    have or not have "www" subdomain and any of http/https protocols.
+
     >>> allowed_re('http://www.example.com/foo', True)
     re.compile('^https?://(www\\.)?example\\.com\\/foo', re.IGNORECASE)
     >>> allowed_re('http://www.example.com/foo', False)
-    re.compile('^https?://(www\\.)?example\\.com', re.IGNORECASE)
+    re.compile('^https?://([a-z0-9-.]+\\.)?example\\.com', re.IGNORECASE)
     >>> allowed_re('https://example.com/foo', False)
-    re.compile('^https?://(www\\.)?example\\.com', re.IGNORECASE)
+    re.compile('^https?://([a-z0-9-.]+\\.)?example\\.com', re.IGNORECASE)
+    >>> allowed_re('https://blog.example.com/foo', True)
+    re.compile('^https?://blog\\.example\\.com\\/foo', re.IGNORECASE)
+    >>> allowed_re('https://blog.example.com/foo', False)
+    re.compile('^https?://([a-z0-9-.]+\\.)?blog\\.example\\.com', re.IGNORECASE)
     >>> bool(allowed_re('https://example.com/foo', False).match('http://www.example.com/bar'))
     True
     >>> bool(allowed_re('https://example.com/foo', True).match('http://www.example.com/bar'))
     False
+    >>> bool(allowed_re('https://example.com/foo', False).match('http://blog.example.com/bar'))
+    True
+    >>> bool(allowed_re('http://example.com/foo', False).match('http://blog.example.com/foo'))
+    True
+    >>> bool(allowed_re('http://blog.example.com', False).match('http://news.example.com'))
+    False
     """
-    http_www = r'^https?://(www\.)?'
     if not hard_url_constraint:
         p = urlsplit(url)
         url = '{}://{}'.format(p.scheme, p.netloc)
+    http = r'^https?://'
+    http_www = http + r'(www\.)?'
     url = re.sub(http_www, '', url)
-    return re.compile(http_www + re.escape(url), re.I)
+    if hard_url_constraint:
+        p = urlsplit('http://' + url)
+        if len(p.netloc.split('.')) > 2:
+            regexp_prefix = http
+        else:
+            regexp_prefix = http_www
+    else:
+        regexp_prefix = http + r'([a-z0-9-.]+\.)?'
+    return re.compile(regexp_prefix + re.escape(url), re.I)
