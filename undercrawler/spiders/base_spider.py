@@ -204,7 +204,10 @@ class BaseSpider(scrapy.Spider):
     def _pagination_urls(self, response):
         return [
             url for url in
-            unique(canonicalize_url(url) for url in autopager.urls(response))
+            unique(
+                canonicalize_url(url, keep_fragments=True)
+                for url in autopager.urls(response)
+            )
             if self.link_extractor.matches(url)
         ]
 
