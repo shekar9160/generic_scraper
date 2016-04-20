@@ -332,6 +332,8 @@ def _looks_like_url(txt):
 def _looks_like_logout(link):
     """
     Return True is link looks like a logout link.
+    This is not a part of AutologinMiddleware because we need a link,
+    not just the URL (link text is also used).
     >>> from scrapy.link import Link
     >>> _looks_like_logout(Link('/logout', text='Log out'))
     True
