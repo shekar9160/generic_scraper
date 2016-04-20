@@ -58,6 +58,7 @@ class BaseSpider(scrapy.Spider):
             splash_args['filters'] = 'fanboy-annoyance,easylist'
         if self.settings.getbool('FORCE_TOR'):
             splash_args['proxy'] = 'tor'
+        meta = meta or {}
         meta['avoid_dup_content'] = True
         return cls(
             url, callback=callback, meta=meta, args=splash_args,
