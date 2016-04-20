@@ -47,7 +47,7 @@ class BaseSpider(scrapy.Spider):
     def splash_request(
             self, url, callback=None, meta=None, cls=SplashRequest, **kwargs):
         callback = callback or self.parse
-        args = {
+        splash_args = {
             'lua_source': self.lua_source,
             'js_source': self.js_source,
             'run_hh': self.settings.getbool('RUN_HH'),
@@ -55,12 +55,13 @@ class BaseSpider(scrapy.Spider):
             'images_enabled': False,
             }
         if self.settings.getbool('ADBLOCK'):
-            args['filters'] = 'fanboy-annoyance,easylist'
+            splash_args['filters'] = 'fanboy-annoyance,easylist'
         if self.settings.getbool('FORCE_TOR'):
-            args['proxy'] = 'tor'
+            splash_args['proxy'] = 'tor'
+        meta['avoid_dup_content'] = True
         return cls(
-            url, callback=callback, meta=meta, args=args, endpoint='execute',
-            cache_args=['lua_source', 'js_source'],
+            url, callback=callback, meta=meta, args=splash_args,
+            endpoint='execute', cache_args=['lua_source', 'js_source'],
             **kwargs)
 
     def parse_first(self, response):

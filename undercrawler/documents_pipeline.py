@@ -30,7 +30,6 @@ class CDRDocumentsPipeline(FilesPipeline):
                 meta={
                     'download_slot':
                         '{} documents'.format(urlsplit(url).netloc),
-                    'skip_avoid_dup_content': True,
                 })
             return [request]
         else:

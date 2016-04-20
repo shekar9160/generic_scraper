@@ -1,6 +1,5 @@
 import logging, time
 
-from scrapy.http.response.text import TextResponse
 from scrapy.exceptions import IgnoreRequest, NotConfigured
 
 from ..dupe_predict import DupePredictor
@@ -16,7 +15,7 @@ class AvoidDupContentMiddleware:
     learns what parameters are important (influence content), and what can
     be safely ignored. Once it is confident it can start dropping
     (or de-prioritizing) requests that are unlikely to get new content.
-    Requests with "skip_avoid_dup_content" in meta will be completely ignored.
+    It is applied only to requests with "avoid_dup_content" in meta.
 
     Required settings:
     AVOID_DUP_CONTENT_ENABLED = True
@@ -75,4 +74,4 @@ class AvoidDupContentMiddleware:
         return response
 
     def skip(self, request):
-        return bool(request.meta.get('skip_avoid_dup_content'))
+        return not request.meta.get('avoid_dup_content')
