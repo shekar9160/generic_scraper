@@ -1,10 +1,11 @@
-from http.cookies import SimpleCookie
-from urllib.parse import urljoin
-import logging
-import time
 from copy import deepcopy
+from functools import partial
+import json
+from http.cookies import SimpleCookie
+import logging
+from urllib.parse import urljoin
 
-import requests
+import scrapy
 from scrapy.exceptions import IgnoreRequest, NotConfigured
 
 
@@ -36,16 +37,21 @@ class AutologinMiddleware:
     - do not block event loop in login() method (instead, collect
     scheduled requests in a separate queue and make request with scrapy).
     '''
-    def __init__(self, autologin_url, auth_cookies=None, logout_url=None,
-                 splash_url=None, login_url=None, username=None, password=None,
-                 user_agent=None, autologin_download_delay=None):
+    def __init__(self, autologin_url, crawler):
+        self.crawler = crawler
+        s = crawler.settings
         self.autologin_url = autologin_url
-        self.splash_url = splash_url
-        self.login_url = login_url
-        self.username = username
-        self.password = password
-        self.user_agent = user_agent
-        self.autologin_download_delay = autologin_download_delay
+        self.splash_url = s.get('SPLASH_URL')
+        self.login_url = s.get('LOGIN_URL')
+        self.username = s.get('USERNAME')
+        self.password = s.get('PASSWORD')
+        self.user_agent = s.get('USER_AGENT')
+        self.autologin_download_delay = s.get('AUTOLOGIN_DOWNLOAD_DELAY')
+        self.logout_url = s.get('LOGOUT_URL')
+        self._queue = []
+        self.waiting_for_login = False
+        auth_cookies = s.get('AUTH_COOKIES')
+        self.skipped = False
         if auth_cookies:
             cookies = SimpleCookie()
             cookies.load(auth_cookies)
@@ -55,47 +61,79 @@ class AutologinMiddleware:
         else:
             self.auth_cookies = None
             self.logged_in = False
-        self.logout_url = logout_url
 
     @classmethod
     def from_crawler(cls, crawler):
         if not crawler.settings.getbool('AUTOLOGIN_ENABLED'):
             raise NotConfigured
-        return cls(**{name.lower(): crawler.settings.get(name) for name in [
-            'AUTOLOGIN_URL', 'AUTH_COOKIES', 'LOGOUT_URL', 'SPLASH_URL',
-            'LOGIN_URL', 'USERNAME', 'PASSWORD', 'USER_AGENT',
-            'AUTOLOGIN_DOWNLOAD_DELAY']})
+        return cls(crawler.settings['AUTOLOGIN_URL'], crawler)
 
     def process_request(self, request, spider):
         ''' Login if we are not logged in yet.
         '''
-        if '_autologin' in request.meta:
+        if '_autologin' in request.meta or request.meta.get('skip_autologin'):
             return
-        # Save original request to be able to retry it in case of logout
-        req_copy = request.replace(meta=deepcopy(request.meta))
-        req_copy.callback = req_copy.errback = None
-        request.meta['_autologin'] = autologin_meta = {'request': req_copy}
+        if self.skipped:
+            return
+        elif self.logged_in:
+            if self.logout_url and self.logout_url in request.url:
+                logger.debug('Ignoring logout request %s', request.url)
+                raise IgnoreRequest
+            # Save original request to be able to retry it in case of logout
+            req_copy = request.replace(meta=deepcopy(request.meta))
+            req_copy.callback = req_copy.errback = None
+            request.meta['_autologin'] = autologin_meta = {'request': req_copy}
+            # TODO - it should be possible to put auth cookies into them
+            # cookiejar in process_response (but also check non-splash)
+            if self.auth_cookies:
+                request.cookies = self.auth_cookies
+                autologin_meta['cookie_dict'] = {
+                    c['name']: c['value'] for c in self.auth_cookies}
+        else:
+            self._queue.append(request)
+            if self.waiting_for_login:
+                raise IgnoreRequest
+            else:
+                return self._login_request(request, spider)
+                #self.auth_cookies = self.get_auth_cookies(request.url)
+                #self.logged_in = True
 
-        if not self.logged_in:
-            self.auth_cookies = self.get_auth_cookies(request.url)
-            self.logged_in = True
-        elif self.logout_url and self.logout_url in request.url:
-            logger.debug('Ignoring logout request %s', request.url)
-            raise IgnoreRequest
+    def _on_login_response(self, request, response, spider):
+        self.waiting_for_login = False
+        response_data = json.loads(response.text)
+        status = response_data['status']
+        logger.debug('Got login response with status "%s"', status)
+        if status == 'pending':
+            self.crawler.engine.crawl(
+                self._login_request(request, spider), spider)
+            return
+        elif status in {'skipped', 'error'}:
+            self.auth_cookies = None
+            self.skipped = True
+            if status == 'error':
+                logger.error("Can't login; crawl will continue without auth.")
+        elif status == 'solved':
+            cookies = response_data.get('cookies')
+            if cookies:
+                cookies = _cookies_to_har(cookies)
+                logger.debug('Got cookies after login %s', cookies)
+                self.auth_cookies = cookies
+                self.logged_in = True
+            else:
+                logger.error('No cookies after login')
+                self.auth_cookies = None
+                self.skipped = True
+        for req in self._queue:
+            req.dont_filter = True
+            self.crawler.engine.crawl(req, spider)
 
-        # Always apply self.cookies, so that changes in self.auth_cookies
-        # are applied to all future requests immediately.
-        if self.auth_cookies:
-            request.cookies = self.auth_cookies
-            autologin_meta['cookie_dict'] = {
-                c['name']: c['value'] for c in self.auth_cookies}
-
-    def get_auth_cookies(self, url):
-        logger.debug('Attempting login at %s', url)
-
+    def _login_request(self, request, spider):
+        self.waiting_for_login = True
+        logger.debug('Attempting login for %s' % request)
         autologin_endpoint = urljoin(self.autologin_url, '/login-cookies')
         params = {
-            'url': urljoin(url, self.login_url) if self.login_url else url,
+            'url': urljoin(request.url, self.login_url) if self.login_url
+                   else request.url,
             'username': self.username,
             'password': self.password,
             'splash_url': self.splash_url,
@@ -108,29 +146,14 @@ class AutologinMiddleware:
         if self.autologin_download_delay:
             params['settings']['DOWNLOAD_DELAY'] = \
                 self.autologin_download_delay
-
-        while True:
-            request = requests.post(autologin_endpoint, json=params)
-            response = request.json()
-            status = response['status']
-            logger.debug('Got login response with status "%s"', status)
-            if status == 'pending':
-                time.sleep(1.0)
-                continue
-            elif status == 'skipped':
-                return None
-            elif status == 'error':
-                logger.error("Can't login; crawl will continue without auth.")
-                return None
-            elif status == 'solved':
-                cookies = response.get('cookies')
-                if cookies:
-                    cookies = _cookies_to_har(cookies)
-                    logger.debug('Got cookies after login %s', cookies)
-                    return cookies
-                else:
-                    logger.debug('No cookies after login')
-                    return None
+        # TODO - use fixed delay for this requests
+        return scrapy.Request(
+            autologin_endpoint, method='POST',
+            body=json.dumps(params).encode(),
+            headers={'content-type': 'application/json'},
+            callback=partial(self._on_login_response, request, spider=spider),
+            dont_filter=True,
+            meta={'skip_autologin': True})
 
     def process_response(self, request, response, spider):
         ''' If we were logged out, login again and retry request.
