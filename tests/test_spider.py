@@ -28,6 +28,7 @@ class SpiderTestCase(TestCase):
         settings.update({
             'DOWNLOAD_DELAY': 0.01,
             'AUTOTHROTTLE_START_DELAY': 0.01,
+            'RUN_HH': False,
             })
         settings['ITEM_PIPELINES']['tests.utils.CollectorPipeline'] = 100
         splash_url = os.environ.get('SPLASH_URL')
@@ -99,6 +100,32 @@ class TestBasic(SpiderTestCase):
         item2 = spider.collected_items[2]
         assert item2['url'] == root_url + '/two'
         assert item2['raw_content'] == html('two')
+
+
+HHPage = text_resource(html(
+    '<a onclick="document.body.innerHTML=\'changed\';">more</a>'
+    '<b>hello</b>'
+    ))
+HHPage.__name__ = 'HHPage'
+
+
+class TestHH(SpiderTestCase):
+    settings = {
+        'AUTOLOGIN_ENABLED': False,
+        'RUN_HH': True
+    }
+
+    @defer.inlineCallbacks
+    def test_single(self):
+        with MockServer(HHPage) as s:
+            root_url = s.root_url
+            yield self.crawler.crawl(url=root_url)
+        spider = self.crawler.spider
+        assert hasattr(spider, 'collected_items')
+        assert len(spider.collected_items) == 1
+        item = spider.collected_items[0]
+        assert item['url'] == root_url + '/'
+        assert item['extracted_text'] == 'changed'
 
 
 FILE_CONTENTS = 'ёюя'.encode('cp1251')
