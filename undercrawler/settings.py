@@ -56,6 +56,7 @@ RUN_HH = True
 
 DOWNLOAD_DELAY = 0.1  # Adjusted by AutoThrottle
 SPLASH_AUTOTHROTTLE_ENABLED = True
+AUTOTHROTTLE_MAX_DELAY = 5
 
 # HH scripts in Splash take a while to execute, so use higher values here
 CONCURRENT_REQUESTS = 32
