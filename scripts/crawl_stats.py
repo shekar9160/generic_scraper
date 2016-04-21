@@ -62,6 +62,11 @@ def print_stats(
             continue
         stats.update(['items'])
         for key, value in item['extracted_metadata'].items():
+            if key == 'forms':
+                for form in value:
+                    stats.update(['form_{}'.format(form['form'])])
+                    stats.update(['form_field {}'.format(f)
+                                  for f in form['fields'].values()])
             if isinstance(value, list):
                 value = len(value)
             if isinstance(value, int) and not isinstance(value, bool):
