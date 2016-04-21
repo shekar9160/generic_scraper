@@ -1,4 +1,4 @@
-import logging, time
+import logging, random, time
 
 from scrapy.exceptions import IgnoreRequest, NotConfigured
 
@@ -27,6 +27,8 @@ class AvoidDupContentMiddleware:
         # is common to a lot of pages, and which is unique.
         self.initial_queue = []  # (url, text)
         self.initial_queue_limit = 300
+        self.threshold = 0.98
+        self.exploration = 0.05
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -43,11 +45,14 @@ class AvoidDupContentMiddleware:
         t = time.time() - t0
         if t > 0.01:
             logger.debug('get_dupe_prob took %.4f s for %s', t, url)
-        # TODO - lower priority for some requests
-        if dupe_prob > 0.98:
-            logger.debug('Ignoring a likely duplicate %s with prob %.3f',
-                            url, dupe_prob)
-            raise IgnoreRequest
+        if dupe_prob > self.threshold:
+            if random.random() < self.exploration:
+                logger.debug('Exploring a likely duplicate %s with prob %.3f',
+                             url, dupe_prob)
+            else:
+                logger.debug('Ignoring a likely duplicate %s with prob %.3f',
+                             url, dupe_prob)
+                raise IgnoreRequest
 
     def process_response(self, request, response, spider):
         if not hasattr(response, 'xpath') or self.skip(request):
