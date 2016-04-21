@@ -13,8 +13,9 @@ class AvoidDupContentMiddleware:
     '''
     Avoid requests for duplicate content. During crawling this middleware
     learns what parameters are important (influence content), and what can
-    be safely ignored. Once it is confident it can start dropping
-    (or de-prioritizing) requests that are unlikely to get new content.
+    be safely ignored. Once it is confident it starts dropping most
+    requests that are unlikely to get new content. Some requests are still
+    downloaded to make crawling more robust against changes in site structure.
     It is applied only to requests with "avoid_dup_content" in meta.
 
     Required settings:
