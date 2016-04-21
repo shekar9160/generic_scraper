@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import argparse, os
+import argparse, json, os
 from collections import Counter
 
 from datasketch import LSH
@@ -11,27 +11,34 @@ from scripts.utils import item_reader, get_too_common_shingles
 def main():
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
-    arg('cralwer_out')
+    arg('crawler_out')
     arg('--show', help='show urls for given key')
     arg('--skip-unique', action='store_true', help='skip unique check')
     arg('--duration-limit', type=int, help='in seconds')
     arg('--print-duplicates', action='store_true')
     arg('--print-urls', action='store_true')
     arg('--limit', type=int)
+    arg('--max-int-value', type=int, default=5)
+    arg('--output', help='additional output in JSON')
     args = parser.parse_args()
 
     params = vars(args)
-    cralwer_out = params.pop('cralwer_out')
-    if os.path.isdir(cralwer_out):
-        for filename in os.listdir(cralwer_out):
+    crawler_out = params.pop('crawler_out')
+    output = params.pop('output')
+    stats = {}
+    if os.path.isdir(crawler_out):
+        for filename in os.listdir(crawler_out):
             if filename.endswith('.json') or filename.endswith('.jl'):
-                with open(os.path.join(cralwer_out, filename)) as f:
+                with open(os.path.join(crawler_out, filename)) as f:
                     print()
                     print(filename)
-                    print_stats(f, **params)
+                    stats[filename] = print_stats(f, **params)
     else:
-        with open(cralwer_out) as f:
-            print_stats(f, **params)
+        with open(crawler_out) as f:
+            stats[os.path.basename(crawler_out)] = print_stats(f, **params)
+    if output:
+        with open(output, 'w') as f:
+            json.dump(stats, f, ensure_ascii=False, indent=4, sort_keys=True)
 
 
 def print_stats(
@@ -94,6 +101,7 @@ def print_stats(
         stats['duration'] = (max_timestamp - min_timestamp) / 1000
     for k, v in sorted(stats.items()):
         print(k.ljust(20), v)
+    return stats
 
 
 if __name__ == '__main__':
