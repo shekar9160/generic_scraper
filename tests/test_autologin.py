@@ -4,9 +4,10 @@ from __future__ import absolute_import
 import tempfile
 import uuid
 
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 from twisted.web.resource import Resource
 from twisted.web.util import Redirect
+from twisted.web.server import NOT_DONE_YET
 
 from .mockserver import MockServer
 from .test_spider import html, SpiderTestCase, find_item, paths_set
@@ -28,13 +29,19 @@ def is_authenticated(request):
         return False
 
 
-def authenticated_text(content):
+def authenticated_text(content, delay=0):
     class R(Resource):
         def render_GET(self, request):
+            reactor.callLater(delay, self._delayedRender, request)
+            return NOT_DONE_YET
+
+        def _delayedRender(self, request):
             if not is_authenticated(request):
-                return Redirect(b'/login').render(request)
+                result = Redirect(b'/login').render(request)
             else:
-                return content.encode()
+                result = content.encode()
+            request.write(result)
+            request.finish()
     return R
 
 
@@ -111,13 +118,15 @@ class LoginWithLogout(Login):
             '<a href="/l0gout1">l0gout1</a> | '
             '<a href="/two">two</a> | '
             '<a href="/l0gout2">l0gout2</a> | '
-            '<a href="/three">three</a>'
+            '<a href="/three">three</a> | '
+            '<a href="/slow">slow</a>'
             ))())
         self.putChild(b'one', authenticated_text(html('1'))())
         self.putChild(b'l0gout1', self._Logout())
         self.putChild(b'two', authenticated_text(html('2'))())
         self.putChild(b'l0gout2', self._Logout())
         self.putChild(b'three', authenticated_text(html('3'))())
+        self.putChild(b'slow', authenticated_text(html('slow'), delay=1.0)())
 
 
 class TestAutologin(SpiderTestCase):
@@ -159,7 +168,7 @@ class TestAutologin(SpiderTestCase):
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
         assert paths_set(spider.collected_items) == \
-               {'/', '/hidden', '/one', '/two', '/three', '/file.pdf'}
+               {'/', '/hidden', '/one', '/two', '/three', '/file.pdf', '/slow'}
 
 
 class TestAutoLoginCustomHeaders(SpiderTestCase):
