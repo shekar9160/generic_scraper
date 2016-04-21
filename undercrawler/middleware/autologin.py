@@ -17,7 +17,9 @@ class AutologinMiddleware:
     Autologin middleware uses autologin to make all requests while being
     logged in. It uses autologin to get cookies, detects logouts and tries
     to avoid them in the future. A single authorization domain for the spider
-    is assumed.
+    is assumed. Middleware also puts "autologin_active" into request.meta,
+    which is True only if we are logged in (and False if domain is skipped
+    or login failed).
 
     Required settings:
     AUTOLOGIN_ENABLED = True
@@ -43,6 +45,7 @@ class AutologinMiddleware:
         self.user_agent = s.get('USER_AGENT')
         self.autologin_download_delay = s.get('AUTOLOGIN_DOWNLOAD_DELAY')
         self.logout_url = s.get('LOGOUT_URL')
+        self._force_skip = s.get('_AUTOLOGIN_FORCE_SKIP')
         self._queue = []
         self.waiting_for_login = False
         auth_cookies = s.get('AUTH_COOKIES')
@@ -69,8 +72,10 @@ class AutologinMiddleware:
         if '_autologin' in request.meta or request.meta.get('skip_autologin'):
             return
         if self.skipped:
+            request.meta['autologin_active'] = False
             return
         elif self.logged_in:
+            request.meta['autologin_active'] = True
             if self.logout_url and self.logout_url in request.url:
                 logger.debug('Ignoring logout request %s', request.url)
                 raise IgnoreRequest
@@ -95,6 +100,8 @@ class AutologinMiddleware:
         self.waiting_for_login = False
         response_data = json.loads(response.text)
         status = response_data['status']
+        if self._force_skip:
+            status = 'skipped'
         logger.debug('Got login response with status "%s"', status)
         if status == 'pending':
             self.crawler.engine.crawl(self._login_request(url, spider), spider)

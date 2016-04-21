@@ -10,7 +10,7 @@ from twisted.web.util import Redirect
 from twisted.web.server import NOT_DONE_YET
 
 from .mockserver import MockServer
-from .test_spider import html, SpiderTestCase, find_item, paths_set
+from .test_spider import html, SpiderTestCase, TestBasic, find_item, paths_set
 
 
 def get_session_id(request):
@@ -127,6 +127,10 @@ class LoginWithLogout(Login):
         self.putChild(b'l0gout2', self._Logout())
         self.putChild(b'three', authenticated_text(html('3'))())
         self.putChild(b'slow', authenticated_text(html('slow'), delay=1.0)())
+
+
+class TestSkip(TestBasic):
+    settings = {'_AUTOLOGIN_FORCE_SKIP': True}
 
 
 class TestAutologin(SpiderTestCase):
