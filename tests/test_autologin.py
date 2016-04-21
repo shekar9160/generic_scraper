@@ -175,16 +175,35 @@ class TestAutologin(SpiderTestCase):
                {'/', '/hidden', '/one', '/two', '/three', '/file.pdf', '/slow'}
 
 
+class TestPending(SpiderTestCase):
+    settings = {
+        'USERNAME': 'admin',
+        'PASSWORD': 'secret',
+        'LOGIN_URL': '/login',
+        'LOGOUT_URL': 'action=l0gout',
+        'AUTOLOGIN_DOWNLOAD_DELAY': 0.01,
+        '_AUTOLOGIN_N_PEND': 3,
+    }
+
+    @defer.inlineCallbacks
+    def test_login(self):
+        with MockServer(Login) as s:
+            root_url = s.root_url
+            yield self.crawler.crawl(url=root_url)
+        spider = self.crawler.spider
+        assert hasattr(spider, 'collected_items')
+        assert len(spider.collected_items) == 2
+        assert paths_set(spider.collected_items) == {'/', '/hidden'}
+
+
 class TestAutoLoginCustomHeaders(SpiderTestCase):
-    @property
-    def settings(self):
-        return {
-            'USERNAME': 'admin',
-            'PASSWORD': 'secret',
-            'LOGIN_URL': '/login',
-            'USER_AGENT': 'MyCustomAgent',
-            'AUTOLOGIN_DOWNLOAD_DELAY': 0.01,
-        }
+    settings = {
+        'USERNAME': 'admin',
+        'PASSWORD': 'secret',
+        'LOGIN_URL': '/login',
+        'USER_AGENT': 'MyCustomAgent',
+        'AUTOLOGIN_DOWNLOAD_DELAY': 0.01,
+    }
 
     @defer.inlineCallbacks
     def test_login(self):

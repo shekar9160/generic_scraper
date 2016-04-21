@@ -45,7 +45,9 @@ class AutologinMiddleware:
         self.user_agent = s.get('USER_AGENT')
         self.autologin_download_delay = s.get('AUTOLOGIN_DOWNLOAD_DELAY')
         self.logout_url = s.get('LOGOUT_URL')
+        # _force_skip and _n_pend and for testing only
         self._force_skip = s.get('_AUTOLOGIN_FORCE_SKIP')
+        self._n_pend = s.get('_AUTOLOGIN_N_PEND')
         self._login_df = None
         auth_cookies = s.get('AUTH_COOKIES')
         self.skipped = False
@@ -107,6 +109,9 @@ class AutologinMiddleware:
             status = response_data['status']
             if self._force_skip:
                 status = 'skipped'
+            elif self._n_pend:
+                self._n_pend -= 1
+                status = 'pending'
             logger.debug('Got login response with status "%s"', status)
             if status == 'pending':
                 continue
