@@ -16,7 +16,8 @@ class AutologinMiddleware:
     '''
     Autologin middleware uses autologin to make all requests while being
     logged in. It uses autologin to get cookies, detects logouts and tries
-    to avoid them in the future.
+    to avoid them in the future. A single authorization domain for the spider
+    is assumed.
 
     Required settings:
     AUTOLOGIN_ENABLED = True
@@ -30,12 +31,6 @@ class AutologinMiddleware:
     USERNAME, PASSWORD, LOGIN_URL are passed to autologin and
     override values from stored credentials.  LOGIN_URL is a relative url.
     It can be omitted if it is the same as the start url.
-
-    We assume a single domain in the whole process here.
-    To relax this assumption, following fixes are required:
-    - make all state in AutologinMiddleware be domain dependant
-    - do not block event loop in login() method (instead, collect
-    scheduled requests in a separate queue and make request with scrapy).
     '''
     def __init__(self, autologin_url, crawler):
         self.crawler = crawler
@@ -83,7 +78,7 @@ class AutologinMiddleware:
             req_copy = request.replace(meta=deepcopy(request.meta))
             req_copy.callback = req_copy.errback = None
             request.meta['_autologin'] = autologin_meta = {'request': req_copy}
-            # TODO - it should be possible to put auth cookies into them
+            # TODO - it should be possible to put auth cookies into the
             # cookiejar in process_response (but also check non-splash)
             if self.auth_cookies:
                 request.cookies = self.auth_cookies
@@ -95,8 +90,6 @@ class AutologinMiddleware:
                 raise IgnoreRequest
             else:
                 return self._login_request(request.url, spider)
-                #self.auth_cookies = self.get_auth_cookies(request.url)
-                #self.logged_in = True
 
     def _on_login_response(self, url, response, spider):
         self.waiting_for_login = False
@@ -151,7 +144,6 @@ class AutologinMiddleware:
         if self.autologin_download_delay:
             params['settings']['DOWNLOAD_DELAY'] = \
                 self.autologin_download_delay
-        # TODO - use fixed delay for this requests
         return scrapy.Request(
             autologin_endpoint, method='POST',
             body=json.dumps(params).encode(),
