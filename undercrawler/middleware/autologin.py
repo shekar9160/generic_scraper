@@ -150,7 +150,8 @@ class AutologinMiddleware:
             headers={'content-type': 'application/json'},
             callback=partial(self._on_login_response, url, spider=spider),
             dont_filter=True,
-            meta={'skip_autologin': True})
+            meta={'skip_autologin': True},
+            priority=1000)
 
     def process_response(self, request, response, spider):
         ''' If we were logged out, login again and retry request.
