@@ -27,7 +27,7 @@ ITEM_PIPELINES = {'undercrawler.documents_pipeline.CDRDocumentsPipeline': 1}
 
 DOWNLOADER_MIDDLEWARES = {
     'undercrawler.middleware.AvoidDupContentMiddleware': 200,
-    'autologin_middleware.AutologinMiddleware': 584,
+    'autologin_middleware.AutologinMiddleware': 605,
     'undercrawler.middleware.SplashAwareAutoThrottle': 722,
     'scrapy_splash.SplashCookiesMiddleware': 723,
     'scrapy_splash.SplashMiddleware': 725,
