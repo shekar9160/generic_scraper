@@ -113,7 +113,7 @@ class BaseSpider(scrapy.Spider):
         # they're be filtered out by a dupefilter.
         normal_urls = {link_to_url(link) for link in
                        self.link_extractor.extract_links(response)
-                       if not self._looks_like_logout(link)}
+                       if not self._looks_like_logout(link, response)}
         for url in normal_urls:
             yield request(url)
 
@@ -161,7 +161,7 @@ class BaseSpider(scrapy.Spider):
                 self.images_link_extractor, self.files_link_extractor]:
             urls.update(
                 link_to_url(link) for link in extractor.extract_links(response)
-                if not self._looks_like_logout(link))
+                if not self._looks_like_logout(link, response))
         urls.difference_update(map(canonicalize_url, normal_urls))
         for url in urls:
             fp = url_fingerprint(url)
@@ -259,8 +259,9 @@ class BaseSpider(scrapy.Spider):
     def handled_search_forms(self):
         return self.state.setdefault('handled_search_forms', set())
 
-    def _looks_like_logout(self, link):
-        if not self.settings.getbool('AUTOLOGIN_ENABLED'):
+    def _looks_like_logout(self, link, response):
+        if not self.settings.getbool('AUTOLOGIN_ENABLED') or not \
+                response.meta.get('autologin_active'):
             return False
         return _looks_like_logout(link)
 
