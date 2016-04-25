@@ -30,6 +30,8 @@ Main features and used components are:
   and hands cookies to the crawler.
   It also includes a spider that finds login and registration forms
   to aid manual registration.
+- [Autologin middleware](https://github.com/TeamHG-Memex/autologin-middleware)
+  ensures that spider is crawling in logged-in state and avoids logouts.
 - [Autopager](https://github.com/TeamHG-Memex/autopager) is used to detect
   pagination links. It allows the crawler to reach content via pagination
   faster and without hitting the depth limit,
@@ -40,12 +42,14 @@ Main features and used components are:
   It uses predefined search terms (letters, digits and symbols) as well as
   user-supplied terms, and tries random refinements using checkbox controls.
 - Links are additionally extracted links from iframes and onclick handlers.
-- The crawler tries to avoid duplicate content by learning which URL
+- [MaybeDont](https://github.com/TeamHG-Memex/MaybeDont)
+  tries to avoid duplicate content by learning which URL
   components do not alter the contents of the page, using MinHash LSH
   for duplicate detection.
 - [Formasaurus](https://github.com/TeamHG-Memex/Formasaurus) is a library
   for form and field classification that is used by AutoLogin and
   Crazy Form Submitter.
+
 
 Installation
 ------------
