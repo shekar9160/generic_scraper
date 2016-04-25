@@ -171,8 +171,12 @@ class TestAutologin(SpiderTestCase):
             yield self.crawler.crawl(url=root_url)
         spider = self.crawler.spider
         assert hasattr(spider, 'collected_items')
-        assert paths_set(spider.collected_items) == \
-               {'/', '/hidden', '/one', '/two', '/three', '/file.pdf', '/slow'}
+        spider_urls = paths_set(spider.collected_items)
+        mandatory_urls = {
+            '/', '/hidden', '/one', '/two', '/three', '/file.pdf', '/slow'}
+        assert mandatory_urls.difference(spider_urls) == set()
+        assert spider_urls.difference(
+            mandatory_urls | {'/l0gout1', '/l0gout2'}) == set()
 
 
 class TestPending(SpiderTestCase):

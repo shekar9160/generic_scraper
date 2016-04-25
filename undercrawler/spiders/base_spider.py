@@ -11,6 +11,7 @@ from scrapy.linkextractors import LinkExtractor
 from scrapy.utils.url import canonicalize_url, add_http_if_no_scheme
 from scrapy.utils.python import unique
 from scrapy_splash import SplashRequest
+from autologin_middleware import link_looks_like_logout
 
 from ..utils import cached_property
 from ..items import CDRItem
@@ -263,7 +264,7 @@ class BaseSpider(scrapy.Spider):
         if not self.settings.getbool('AUTOLOGIN_ENABLED') or not \
                 response.meta.get('autologin_active'):
             return False
-        return _looks_like_logout(link)
+        return link_looks_like_logout(link)
 
 
 @contextlib.contextmanager
@@ -326,32 +327,6 @@ def _looks_like_url(txt):
     if re.search(r'\?\w+=.+', txt):
         return True
     if re.match(r"\w+\.html", txt):
-        return True
-    return False
-
-
-def _looks_like_logout(link):
-    """
-    Return True is link looks like a logout link.
-    This is not a part of AutologinMiddleware because we need a link,
-    not just the URL (link text is also used).
-    >>> from scrapy.link import Link
-    >>> _looks_like_logout(Link('/logout', text='Log out'))
-    True
-    >>> _looks_like_logout(Link('/Logout-me', text='Exit'))
-    True
-    >>> _looks_like_logout(Link('/exit', text='Log out'))
-    True
-    >>> _looks_like_logout(Link('/exit', text='Logout'))
-    True
-    >>> _looks_like_logout(Link('/exit', text='Exit'))
-    False
-    """
-    text = link.text.lower()
-    if any(x in text for x in ['logout', 'log out']):
-        return True
-    url = link_to_url(link).lower()
-    if any(x in url for x in ['logout']):
         return True
     return False
 
