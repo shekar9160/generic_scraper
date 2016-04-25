@@ -1,7 +1,7 @@
 *.pyc
 *.egg-info
 .tox
-.coverage
+.coverage*
 htmlcov/
 .ipynb_checkpoints
 .DS_Store
@@ -10,4 +10,3 @@ htmlcov/
 *.jl
 venv
 _sup
-undercrawler/keychain_db.sqlite
