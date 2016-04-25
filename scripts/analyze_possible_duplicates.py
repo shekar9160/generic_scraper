@@ -3,11 +3,11 @@ import argparse, logging, os
 from collections import namedtuple
 from urllib.parse import urlsplit
 
-from datasketch import LSH
+from datasketch import MinHashLSH
 from scrapy.utils.url import canonicalize_url
+from maybedont import DupePredictor
+from maybedont.utils import get_too_common_shingles, get_min_hash
 
-from undercrawler.utils import get_min_hash
-from undercrawler.dupe_predict import DupePredictor, _parse_url
 from scripts.utils import item_reader, get_too_common_shingles
 
 
@@ -37,7 +37,7 @@ def analyze_file(name, f, verbose=False):
     urls = []
     Doc = namedtuple('Doc', ['item', 'min_hash'])
     documents = {} # key -> Doc
-    lsh = LSH(threshold=0.9, num_perm=128)
+    lsh = MinHashLSH(threshold=0.9, num_perm=128)
     too_common = get_too_common_shingles(f, name, limit=300)
     for i, item in enumerate(item_reader(f, name)):
         urls.append(item['url'])
@@ -45,6 +45,8 @@ def analyze_file(name, f, verbose=False):
         key = 'item_{}'.format(i)
         item = {'url': item['url']}
         documents[key] = Doc(item, min_hash)
+        if key in lsh:
+            lsh.remove(key)
         lsh.insert(key, min_hash)
     paths = [''.join([p.netloc, p.path]) for p in map(urlsplit, urls)]
     duplicates = get_duplicates(lsh, documents, verbose=verbose)
@@ -86,7 +88,7 @@ def learn_duplicates(name, f, verbose=False):
         item['extracted_text'] for item in item_reader(f, name, limit=300)]
     dupe_predictor = DupePredictor(texts_sample)
 
-    lsh = LSH(threshold=0.9, num_perm=128)  # separate from dupe_predictor
+    lsh = MinHashLSH(threshold=0.9, num_perm=128)  # separate from dupe_predictor
     too_common_shingles = dupe_predictor.too_common_shingles
     threshold = 0.98
     y_pred, y_true = [], []
@@ -110,13 +112,16 @@ def learn_duplicates(name, f, verbose=False):
             # We think this is a duplicate: replicate crawling
             # and do not update the model.
             duplicates = list(lsh.query(min_hash))
-        lsh.insert(canonicalize_url(item['url']), min_hash)
+        key = canonicalize_url(item['url'])
+        if key in lsh:
+            lsh.remove(key)
+        lsh.insert(key, min_hash)
         y_true.append(bool(duplicates))
         if verbose:
             if duplicates and dupe_prob < threshold:
-                path, _ = _parse_url(item['url'])
+                path = _full_path(item['url'])
                 sample = [url for url in duplicates
-                          if _parse_url(url)[0] == path] or duplicates
+                          if _full_path(url) == path] or duplicates
                 print('false negative %s (%s, %d more)' % (
                     item['url'], sample[0], len(sample) - 1))
             elif not duplicates and dupe_prob > threshold:
@@ -124,6 +129,11 @@ def learn_duplicates(name, f, verbose=False):
         if i % 100 == 0:
             _report_pr()
     _report_pr()
+
+
+def _full_path(url):
+    p = urlsplit(url)
+    return ''.join([p.netloc, p.path])
 
 
 if __name__ == '__main__':

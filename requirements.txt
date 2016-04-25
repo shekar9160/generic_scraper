@@ -2,8 +2,9 @@ git+https://github.com/scrapy/scrapy.git@288f8c09f8bac4c92f49332c8a5f5a21a182cc1
 botocore
 scrapy-splash==0.6
 git+https://github.com/TeamHG-Memex/autologin-middleware.git
+git+https://github.com/TeamHG-Memex/MaybeDont.git
 Formasaurus[with_deps]==0.7.2
 autopager==0.1
-datasketch==0.1.35
+datasketch==0.2.3
 tqdm
 pytest
