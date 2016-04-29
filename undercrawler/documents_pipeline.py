@@ -2,6 +2,7 @@ import logging
 import os.path
 from urllib.parse import urlsplit
 
+from scrapy import Request
 from scrapy.pipelines.files import FilesPipeline, S3FilesStore, FSFilesStore
 from scrapy.exceptions import DropItem
 from scrapy_splash import SplashRequest, SlotPolicy
@@ -21,16 +22,22 @@ class CDRDocumentsPipeline(FilesPipeline):
     def get_media_requests(self, item, info):
         url = item.get('obj_original_url')
         if url:
-            request = SplashRequest(
-                url,
-                endpoint='execute',
-                args={'lua_source': self.lua_source},
-                slot_policy=SlotPolicy.SCRAPY_DEFAULT,
+            kwargs = dict(
+                url=url,
                 priority=-2,
                 meta={
                     'download_slot':
                         '{} documents'.format(urlsplit(url).netloc),
-                })
+                },
+            )
+            if self.crawler.settings.getbool('USE_SPLASH'):
+                request = SplashRequest(
+                    endpoint='execute',
+                    args={'lua_source': self.lua_source},
+                    slot_policy=SlotPolicy.SCRAPY_DEFAULT,
+                    **kwargs)
+            else:
+                request = Request(**kwargs)
             return [request]
         else:
             return []

@@ -7,10 +7,11 @@ from urllib.parse import urljoin, urlsplit
 import autopager
 import formasaurus
 import scrapy
+from scrapy import Request, FormRequest
 from scrapy.linkextractors import LinkExtractor
 from scrapy.utils.url import canonicalize_url, add_http_if_no_scheme
 from scrapy.utils.python import unique
-from scrapy_splash import SplashRequest
+from scrapy_splash import SplashRequest, SplashFormRequest
 from autologin_middleware import link_looks_like_logout
 
 from ..utils import cached_property
@@ -36,35 +37,41 @@ class BaseSpider(scrapy.Spider):
             tags=['img'], attrs=['src'], deny_extensions=[])
         self._files_fingerprints = set()
         self.state = {}
+        self.use_splash = None  # set up in start_requests
         # Load headless horseman scripts
         self.lua_source = load_directive('headless_horseman.lua')
         self.js_source = load_directive('headless_horseman.js')
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
+        self.use_splash = self.settings.getbool('USE_SPLASH')
         for url in self.start_urls:
-            yield self.splash_request(url, callback=self.parse_first)
+            yield self.make_request(url, callback=self.parse_first)
 
-    def splash_request(
-            self, url, callback=None, meta=None, cls=SplashRequest, **kwargs):
+    def make_request(
+            self, url, callback=None, meta=None, cls=None, **kwargs):
         callback = callback or self.parse
-        splash_args = {
-            'lua_source': self.lua_source,
-            'js_source': self.js_source,
-            'run_hh': self.settings.getbool('RUN_HH'),
-            'return_png': False,
-            'images_enabled': False,
-            }
-        if self.settings.getbool('ADBLOCK'):
-            splash_args['filters'] = 'fanboy-annoyance,easylist'
-        if self.settings.getbool('FORCE_TOR'):
-            splash_args['proxy'] = 'tor'
+        cls = cls or (SplashRequest if self.use_splash else Request)
+        if self.use_splash:
+            splash_args = {
+                'lua_source': self.lua_source,
+                'js_source': self.js_source,
+                'run_hh': self.settings.getbool('RUN_HH'),
+                'return_png': False,
+                'images_enabled': False,
+                }
+            if self.settings.getbool('ADBLOCK'):
+                splash_args['filters'] = 'fanboy-annoyance,easylist'
+            if self.settings.getbool('FORCE_TOR'):
+                splash_args['proxy'] = 'tor'
+            kwargs.update(
+                args=splash_args,
+                endpoint='execute',
+                cache_args=['lua_source', 'js_source'],
+            )
         meta = meta or {}
         meta['avoid_dup_content'] = True
-        return cls(
-            url, callback=callback, meta=meta, args=splash_args,
-            endpoint='execute', cache_args=['lua_source', 'js_source'],
-            **kwargs)
+        return cls(url, callback=callback, meta=meta, **kwargs)
 
     def parse_first(self, response):
         self.allowed += (allowed_re(
@@ -83,7 +90,7 @@ class BaseSpider(scrapy.Spider):
         def request(url, meta=None, **kwargs):
             meta = meta or {}
             meta.update(request_meta)
-            return self.splash_request(url, meta=meta, **kwargs)
+            return self.make_request(url, meta=meta, **kwargs)
 
         forms = formasaurus.extract_forms(response.text) if response.text \
                 else []
@@ -152,6 +159,8 @@ class BaseSpider(scrapy.Spider):
                     search_terms=self.search_terms,
                     extra_search_terms=self.extra_search_terms):
                 request_kwargs['meta'] = {'is_search': True}
+                request_kwargs['cls'] = \
+                    SplashFormRequest if self.use_splash else FormRequest
                 yield request_kwargs
 
     def download_files(self, response, normal_urls, parent_item):

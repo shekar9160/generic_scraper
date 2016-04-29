@@ -61,8 +61,8 @@ class Follow(Resource):
         super().__init__()
         self.putChild(b'', text_resource(
             html('<a href="/one">one</a> | <a href="/two">Logout</a>'))())
-        self.putChild(b'one', text_resource('one')())
-        self.putChild(b'two', text_resource('two')())
+        self.putChild(b'one', text_resource(html('one'))())
+        self.putChild(b'two', text_resource(html('two'))())
 
 
 class TestBasic(SpiderTestCase):
@@ -79,7 +79,7 @@ class TestBasic(SpiderTestCase):
         assert hasattr(spider, 'collected_items')
         assert len(spider.collected_items) == 1
         item = spider.collected_items[0]
-        assert item['url'] == root_url + '/'
+        assert item['url'].rstrip('/') == root_url
         assert item['extracted_text'] == 'hello'
         assert item['raw_content'] == html('<b>hello</b>')
 
@@ -93,7 +93,7 @@ class TestBasic(SpiderTestCase):
         assert len(spider.collected_items) == 3
         spider.collected_items.sort(key=lambda item: item['url'])
         item0 = spider.collected_items[0]
-        assert item0['url'] == root_url + '/'
+        assert item0['url'].rstrip('/') == root_url
         item1 = spider.collected_items[1]
         assert item1['url'] == root_url + '/one'
         assert item1['raw_content'] == html('one')
@@ -117,6 +117,8 @@ class TestHH(SpiderTestCase):
 
     @defer.inlineCallbacks
     def test_single(self):
+        if not self.crawler.settings.getbool('USE_SPLASH'):
+            pytest.skip('requires splash')
         with MockServer(HHPage) as s:
             root_url = s.root_url
             yield self.crawler.crawl(url=root_url)
@@ -124,7 +126,7 @@ class TestHH(SpiderTestCase):
         assert hasattr(spider, 'collected_items')
         assert len(spider.collected_items) == 1
         item = spider.collected_items[0]
-        assert item['url'] == root_url + '/'
+        assert item['url'].rstrip('/') == root_url
         assert item['extracted_text'] == 'changed'
 
 
@@ -226,7 +228,8 @@ def paths_set(items):
     _paths_set = set()
     for item in items:
         p = urlsplit(item['url'])
-        _paths_set.add(urlunsplit(['', '', p.path, p.query, p.fragment]))
+        _paths_set.add(
+            urlunsplit(['', '', p.path or '/', p.query, p.fragment]))
     return _paths_set
 
 
