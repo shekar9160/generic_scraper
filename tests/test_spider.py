@@ -1,59 +1,30 @@
-import os
 import tempfile
-from urllib.parse import urlsplit, urlunsplit
 
 import pytest
-from twisted.internet import defer
-from twisted.trial.unittest import TestCase
 from twisted.web.resource import Resource
-from scrapy.crawler import CrawlerRunner
-from scrapy.settings import Settings
-from scrapy.utils.log import configure_logging
-from scrapy.utils.python import to_bytes
 
-import undercrawler.settings
-from undercrawler.spiders import BaseSpider
-from tests.mockserver import MockServer
+from .utils import text_resource, html, paths_set, find_item, inlineCallbacks
+from .mockserver import MockServer
+from .conftest import make_crawler
 
 
-configure_logging()
+class SinglePage(text_resource(html('<b>hello</b>'))):
+    pass
 
 
-class SpiderTestCase(TestCase):
-    settings = {}
-
-    def setUp(self):
-        settings = Settings()
-        settings.setmodule(undercrawler.settings)
-        settings.update({
-            'DOWNLOAD_DELAY': 0.01,
-            'AUTOTHROTTLE_START_DELAY': 0.01,
-            'RUN_HH': False,
-            })
-        settings['ITEM_PIPELINES']['tests.utils.CollectorPipeline'] = 100
-        splash_url = os.environ.get('SPLASH_URL')
-        if splash_url:
-            settings['SPLASH_URL'] = splash_url
-        settings.update(self.settings)
-        runner = CrawlerRunner(settings)
-        self.crawler = runner.create_crawler(BaseSpider)
-
-
-def html(content):
-    return '<html><head></head><body>{}</body></html>'.format(content)
-
-
-def text_resource(content):
-    class Page(Resource):
-        isLeaf = True
-        def render_GET(self, request):
-            request.setHeader(b'content-type', b'text/html')
-            return to_bytes(content)
-    return Page
-
-
-SinglePage = text_resource(html('<b>hello</b>'))
-SinglePage.__name__ = 'SinglePage'
+@inlineCallbacks
+def test_single(settings):
+    crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False)
+    with MockServer(SinglePage) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 1
+    item = spider.collected_items[0]
+    assert item['url'].rstrip('/') == root_url
+    assert item['extracted_text'] == 'hello'
+    assert item['raw_content'] == html('<b>hello</b>')
 
 
 class Follow(Resource):
@@ -65,69 +36,48 @@ class Follow(Resource):
         self.putChild(b'two', text_resource(html('two'))())
 
 
-class TestBasic(SpiderTestCase):
-    settings = {
-        'AUTOLOGIN_ENABLED': False,
-    }
-
-    @defer.inlineCallbacks
-    def test_single(self):
-        with MockServer(SinglePage) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 1
-        item = spider.collected_items[0]
-        assert item['url'].rstrip('/') == root_url
-        assert item['extracted_text'] == 'hello'
-        assert item['raw_content'] == html('<b>hello</b>')
-
-    @defer.inlineCallbacks
-    def test_follow(self):
-        with MockServer(Follow) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 3
-        spider.collected_items.sort(key=lambda item: item['url'])
-        item0 = spider.collected_items[0]
-        assert item0['url'].rstrip('/') == root_url
-        item1 = spider.collected_items[1]
-        assert item1['url'] == root_url + '/one'
-        assert item1['raw_content'] == html('one')
-        item2 = spider.collected_items[2]
-        assert item2['url'] == root_url + '/two'
-        assert item2['raw_content'] == html('two')
+@inlineCallbacks
+def test_follow(settings, **extra):
+    crawler = make_crawler(
+        settings, **(extra or dict(AUTOLOGIN_ENABLED=False)))
+    with MockServer(Follow) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 3
+    spider.collected_items.sort(key=lambda item: item['url'])
+    item0 = spider.collected_items[0]
+    assert item0['url'].rstrip('/') == root_url
+    item1 = spider.collected_items[1]
+    assert item1['url'] == root_url + '/one'
+    assert item1['raw_content'] == html('one')
+    item2 = spider.collected_items[2]
+    assert item2['url'] == root_url + '/two'
+    assert item2['raw_content'] == html('two')
 
 
-HHPage = text_resource(html(
-    '<a onclick="document.body.innerHTML=\'changed\';">more</a>'
-    '<b>hello</b>'
-    ))
-HHPage.__name__ = 'HHPage'
+class HHPage(text_resource(html(
+        '<a onclick="document.body.innerHTML=\'changed\';">more</a>'
+        '<b>hello</b>'
+        ))):
+    pass
 
 
-class TestHH(SpiderTestCase):
-    settings = {
-        'AUTOLOGIN_ENABLED': False,
-        'RUN_HH': True
-    }
-
-    @defer.inlineCallbacks
-    def test_single(self):
-        if not self.crawler.settings.getbool('USE_SPLASH'):
-            pytest.skip('requires splash')
-        with MockServer(HHPage) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 1
-        item = spider.collected_items[0]
-        assert item['url'].rstrip('/') == root_url
-        assert item['extracted_text'] == 'changed'
+@inlineCallbacks
+def test_hh(settings):
+    crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False, RUN_HH=True)
+    if not crawler.settings.getbool('USE_SPLASH'):
+        pytest.skip('requires splash')
+    with MockServer(HHPage) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 1
+    item = spider.collected_items[0]
+    assert item['url'].rstrip('/') == root_url
+    assert item['extracted_text'] == 'changed'
 
 
 FILE_CONTENTS = 'ёюя'.encode('cp1251')
@@ -154,37 +104,26 @@ class WithFile(Resource):
             '<a href="/file.pdf">file</a>'))())
 
 
-class TestDocuments(SpiderTestCase):
-    @property
-    def settings(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        return  {
-            'AUTOLOGIN_ENABLED': False,
-            'FILES_STORE': 'file://' + self.tempdir.name,
-        }
-
-    @defer.inlineCallbacks
-    def test(self):
-        with MockServer(WithFile) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 4
-        file_item = find_item('/file.pdf', spider.collected_items)
-        assert file_item['url'] == file_item['obj_original_url'] == \
-            root_url + '/file.pdf'
-        with open(file_item['obj_stored_url'], 'rb') as f:
-            assert f.read() == FILE_CONTENTS
-        assert file_item['content_type'] == 'application/pdf'
-        forbidden_item = find_item('/forbidden.pdf', spider.collected_items)
-        with open(forbidden_item['obj_stored_url'], 'rb') as f:
-            assert f.read() == FILE_CONTENTS * 2
-
-
-def find_item(substring, items):
-    [item] = [item for item in items if substring in item['url']]
-    return item
+@inlineCallbacks
+def test_documents(settings):
+    tempdir = tempfile.TemporaryDirectory()
+    crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False,
+                           FILES_STORE='file://' + tempdir.name)
+    with MockServer(WithFile) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 4
+    file_item = find_item('/file.pdf', spider.collected_items)
+    assert file_item['url'] == file_item['obj_original_url'] == \
+        root_url + '/file.pdf'
+    with open(file_item['obj_stored_url'], 'rb') as f:
+        assert f.read() == FILE_CONTENTS
+    assert file_item['content_type'] == 'application/pdf'
+    forbidden_item = find_item('/forbidden.pdf', spider.collected_items)
+    with open(forbidden_item['obj_stored_url'], 'rb') as f:
+        assert f.read() == FILE_CONTENTS * 2
 
 
 class Search(Resource):
@@ -208,36 +147,17 @@ class Search(Resource):
                .encode()
 
 
-class TestCrazyFormSubmitter(SpiderTestCase):
-    settings = {
-        'AUTOLOGIN_ENABLED': False,
-    }
-    @defer.inlineCallbacks
-    def test(self):
-        with MockServer(Search) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url, search_terms=['a', 'b'])
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 3
-        assert paths_set(spider.collected_items) == \
-               {'/', '/?query=a', '/?query=b'}
-
-
-def paths_set(items):
-    _paths_set = set()
-    for item in items:
-        p = urlsplit(item['url'])
-        _paths_set.add(
-            urlunsplit(['', '', p.path or '/', p.query, p.fragment]))
-    return _paths_set
-
-
-def test_paths_set():
-    assert paths_set([
-        {'url': 'https://google.com/foo?query=bar'},
-        {'url': 'http://google.com/'},
-        ]) == {'/foo?query=bar', '/'}
+@inlineCallbacks
+def test_crazy_form_submitter(settings):
+    crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False)
+    with MockServer(Search) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url, search_terms=['a', 'b'])
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 3
+    assert paths_set(spider.collected_items) == \
+            {'/', '/?query=a', '/?query=b'}
 
 
 class LotsOfLinks(Resource):
@@ -256,13 +176,9 @@ class LotsOfLinks(Resource):
 
 
 @pytest.mark.skip('This is not really a test at the moment')
-class TestLotsOfLinks(SpiderTestCase):
-    settings = {
-        'AUTOLOGIN_ENABLED': False,
-    }
-    @defer.inlineCallbacks
-    def test(self):
-        with MockServer(LotsOfLinks) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
+@inlineCallbacks
+def test_lots_of_links(settings):
+    crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False)
+    with MockServer(LotsOfLinks) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
