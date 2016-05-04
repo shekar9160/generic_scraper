@@ -4,13 +4,15 @@ from __future__ import absolute_import
 import tempfile
 import uuid
 
-from twisted.internet import defer, reactor
+from twisted.internet import reactor
 from twisted.web.resource import Resource
 from twisted.web.util import Redirect
 from twisted.web.server import NOT_DONE_YET
 
 from .mockserver import MockServer
-from .test_spider import html, SpiderTestCase, TestBasic, find_item, paths_set
+from .utils import inlineCallbacks, html, find_item, paths_set
+from .conftest import make_crawler
+from .test_spider import test_follow
 
 
 def get_session_id(request):
@@ -129,92 +131,86 @@ class LoginWithLogout(Login):
         self.putChild(b'slow', authenticated_text(html('slow'), delay=1.0)())
 
 
-class TestSkip(TestBasic):
-    settings = {'_AUTOLOGIN_FORCE_SKIP': True}
+@inlineCallbacks
+def test_skip(settings):
+    yield test_follow(settings, _AUTOLOGIN_FORCE_SKIP=True)
 
 
-class TestAutologin(SpiderTestCase):
-    @property
-    def settings(self):
-        self.tempdir = tempfile.TemporaryDirectory()
-        return {
-            'USERNAME': 'admin',
-            'PASSWORD': 'secret',
-            'LOGIN_URL': '/login',
-            'LOGOUT_URL': 'action=l0gout',
-            'FILES_STORE': 'file://' + self.tempdir.name,
-            'AUTOLOGIN_DOWNLOAD_DELAY': 0.01,
-        }
-
-    @defer.inlineCallbacks
-    def test_login(self):
-        ''' No logout links, just one page after login.
-        '''
-        with MockServer(Login) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 3
-        assert paths_set(spider.collected_items) == \
-               {'/', '/hidden', '/file.pdf'}
-        file_item = find_item('/file.pdf', spider.collected_items)
-        with open(file_item['obj_stored_url'], 'rb') as f:
-            assert f.read() == b'data'
-
-    @defer.inlineCallbacks
-    def test_login_with_logout(self):
-        ''' Login with logout.
-        '''
-        with MockServer(LoginWithLogout) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        spider_urls = paths_set(spider.collected_items)
-        mandatory_urls = {
-            '/', '/hidden', '/one', '/two', '/three', '/file.pdf', '/slow'}
-        assert mandatory_urls.difference(spider_urls) == set()
-        assert spider_urls.difference(
-            mandatory_urls | {'/l0gout1', '/l0gout2'}) == set()
+base_login_settings = dict(
+    USERNAME='admin',
+    PASSWORD='secret',
+    LOGIN_URL='/login',
+    LOGOUT_URL='action=l0gout',
+    AUTOLOGIN_DOWNLOAD_DELAY=0.01,
+    )
 
 
-class TestPending(SpiderTestCase):
-    settings = {
-        'USERNAME': 'admin',
-        'PASSWORD': 'secret',
-        'LOGIN_URL': '/login',
-        'LOGOUT_URL': 'action=l0gout',
-        'AUTOLOGIN_DOWNLOAD_DELAY': 0.01,
-        '_AUTOLOGIN_N_PEND': 3,
-    }
-
-    @defer.inlineCallbacks
-    def test_login(self):
-        with MockServer(Login) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 2
-        assert paths_set(spider.collected_items) == {'/', '/hidden'}
+def make_login_crawler(settings, **extra):
+    kwargs = dict(base_login_settings)
+    kwargs.update(extra)
+    return make_crawler(settings, **kwargs)
 
 
-class TestAutoLoginCustomHeaders(SpiderTestCase):
-    settings = {
-        'USERNAME': 'admin',
-        'PASSWORD': 'secret',
-        'LOGIN_URL': '/login',
-        'USER_AGENT': 'MyCustomAgent',
-        'AUTOLOGIN_DOWNLOAD_DELAY': 0.01,
-    }
+def make_login_crawler_with_store(settings):
+    tempdir = tempfile.TemporaryDirectory()
+    return make_login_crawler(settings, FILES_STORE='file://' + tempdir.name)
 
-    @defer.inlineCallbacks
-    def test_login(self):
-        with MockServer(LoginIfUserAgentOk) as s:
-            root_url = s.root_url
-            yield self.crawler.crawl(url=root_url)
-        spider = self.crawler.spider
-        assert hasattr(spider, 'collected_items')
-        assert len(spider.collected_items) == 2
-        assert spider.collected_items[1]['url'] == root_url + '/hidden'
+
+@inlineCallbacks
+def test_login(settings):
+    ''' No logout links, just one page after login.
+    '''
+    crawler = make_login_crawler_with_store(settings)
+    with MockServer(Login) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 3
+    assert paths_set(spider.collected_items) == \
+            {'/', '/hidden', '/file.pdf'}
+    file_item = find_item('/file.pdf', spider.collected_items)
+    with open(file_item['obj_stored_url'], 'rb') as f:
+        assert f.read() == b'data'
+
+
+@inlineCallbacks
+def test_login_with_logout(settings):
+    ''' Login with logout.
+    '''
+    crawler = make_login_crawler_with_store(settings)
+    with MockServer(LoginWithLogout) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    spider_urls = paths_set(spider.collected_items)
+    mandatory_urls = {
+        '/', '/hidden', '/one', '/two', '/three', '/file.pdf', '/slow'}
+    assert mandatory_urls.difference(spider_urls) == set()
+    assert spider_urls.difference(
+        mandatory_urls | {'/l0gout1', '/l0gout2'}) == set()
+
+
+@inlineCallbacks
+def test_pending(settings):
+    crawler = make_login_crawler(settings, _AUTOLOGIN_N_PEND=3)
+    with MockServer(Login) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 2
+    assert paths_set(spider.collected_items) == {'/', '/hidden'}
+
+
+@inlineCallbacks
+def test_custom_headers(settings):
+    crawler = make_login_crawler(settings, USER_AGENT='MyCustomAgent')
+    with MockServer(LoginIfUserAgentOk) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 2
+    assert spider.collected_items[1]['url'] == root_url + '/hidden'

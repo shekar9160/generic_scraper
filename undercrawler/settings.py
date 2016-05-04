@@ -15,6 +15,8 @@ CRAZY_SEARCH_ENABLED = True
 CDR_CRAWLER = 'scrapy undercrawler'
 CDR_TEAM = 'HG'
 
+USE_SPLASH = True
+
 PREFER_PAGINATION = True
 ADBLOCK = False
 MAX_DOMAIN_SEARCH_FORMS = 10
@@ -28,6 +30,8 @@ ITEM_PIPELINES = {'undercrawler.documents_pipeline.CDRDocumentsPipeline': 1}
 DOWNLOADER_MIDDLEWARES = {
     'maybedont.scrapy_middleware.AvoidDupContentMiddleware': 200,
     'autologin_middleware.AutologinMiddleware': 605,
+    'scrapy.downloadermiddlewares.cookies.CookiesMiddleware': None,
+    'undercrawler.middleware.CookiesMiddlewareIfNoSplash': 700,
     'undercrawler.middleware.SplashAwareAutoThrottle': 722,
     'scrapy_splash.SplashCookiesMiddleware': 723,
     'scrapy_splash.SplashMiddleware': 725,
@@ -45,7 +49,8 @@ USER_AGENT = ('Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 '
               '(KHTML, like Gecko) Ubuntu Chromium/43.0.2357.130 '
               'Chrome/43.0.2357.130 Safari/537.36')
 
-COOKIES_ENABLED = False
+# enabled in CookiesMiddlewareIfNoSplash only when USE_SPLASH is False
+COOKIES_ENABLED = True
 
 # Run full headless-horseman scripts
 RUN_HH = True

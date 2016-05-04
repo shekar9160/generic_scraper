@@ -3,7 +3,6 @@ import random
 import string
 
 from scrapy.http.request.form import _get_inputs as get_form_data
-from scrapy_splash import SplashRequest, SplashFormRequest
 
 
 logger = logging.getLogger(__name__)
@@ -47,7 +46,6 @@ def search_form_requests(url, form, meta,
                     search_term, url, priority,
                     ' with random refinement' if do_random_refinement else '')
                 yield dict(
-                    cls=SplashFormRequest,
                     url=url,
                     formdata=formdata,
                     method=form.method,
