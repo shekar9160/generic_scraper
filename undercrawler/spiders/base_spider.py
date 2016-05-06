@@ -281,7 +281,7 @@ class BaseSpider(scrapy.Spider):
         return link_looks_like_logout(link)
 
     def _debug_screenshot(self, response):
-        screenshot = response.data.get('png')
+        screenshot = response.data.get('png') if self.use_splash else None
         if not screenshot or not self.logger.isEnabledFor(logging.DEBUG):
             return
         filename = os.path.join('screenshots', '{}.png'.format(uuid.uuid4()))
