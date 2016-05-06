@@ -102,6 +102,8 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
   as needed (value is in seconds).
 - ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
 - ``SEARCH_TERMS_FILE`` - file with extra search terms to use (one per line)
+- ``SCREENSHOTS`` - set to 1 to save screenshots while crawling (make sure
+  you do not change the logging level from default ``DEBUG``).
 - ``SPLASH_URL`` - url of the splash instance
 - ``USE_SPLASH`` - set to 0 to crawl without using splash
 - ``USERNAME``, ``PASSWORD``, ``LOGIN_URL`` - specify values to pass to

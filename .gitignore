@@ -10,3 +10,4 @@ htmlcov/
 *.jl
 venv
 _sup
+screenshots/*.png

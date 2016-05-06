@@ -1,8 +1,12 @@
 import re
+import os
+import uuid
 import contextlib
 from datetime import datetime
 import hashlib
 from urllib.parse import urljoin, urlsplit
+import logging
+from base64 import b64decode
 
 import autopager
 import formasaurus
@@ -57,7 +61,7 @@ class BaseSpider(scrapy.Spider):
                 'lua_source': self.lua_source,
                 'js_source': self.js_source,
                 'run_hh': self.settings.getbool('RUN_HH'),
-                'return_png': False,
+                'return_png': self.settings.getbool('SCREENSHOTS'),
                 'images_enabled': False,
                 }
             if self.settings.getbool('ADBLOCK'):
@@ -92,6 +96,7 @@ class BaseSpider(scrapy.Spider):
             meta.update(request_meta)
             return self.make_request(url, meta=meta, **kwargs)
 
+        self._debug_screenshot(response)
         forms = formasaurus.extract_forms(response.text) if response.text \
                 else []
         parent_item = self.text_cdr_item(response, dict(
@@ -274,6 +279,15 @@ class BaseSpider(scrapy.Spider):
                 response.meta.get('autologin_active'):
             return False
         return link_looks_like_logout(link)
+
+    def _debug_screenshot(self, response):
+        screenshot = response.data.get('png')
+        if not screenshot or not self.logger.isEnabledFor(logging.DEBUG):
+            return
+        filename = os.path.join('screenshots', '{}.png'.format(uuid.uuid4()))
+        with open(filename, 'wb') as f:
+            f.write(b64decode(screenshot))
+        self.logger.debug('Saved %s screenshot to %s' % (response, filename))
 
 
 @contextlib.contextmanager
