@@ -137,10 +137,10 @@ def test_skip(settings):
 
 
 base_login_settings = dict(
-    USERNAME='admin',
-    PASSWORD='secret',
-    LOGIN_URL='/login',
-    LOGOUT_URL='action=l0gout',
+    AUTOLOGIN_USERNAME='admin',
+    AUTOLOGIN_PASSWORD='secret',
+    AUTOLOGIN_LOGIN_URL='/login',
+    AUTOLOGIN_LOGOUT_URL='action=l0gout',
     AUTOLOGIN_DOWNLOAD_DELAY=0.01,
     )
 

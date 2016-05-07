@@ -89,6 +89,10 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
   based on urls
 - ``AUTOLOGIN_ENABLED`` - set to 0 to disable autologin middleware
 - ``AUTOLOGIN_URL`` - url of the autologin HTTP API
+- ``AUTOLOGIN_USERNAME``, ``AUTOLOGIN_PASSWORD``, ``AUTOLOGIN_LOGIN_URL``
+  - specify values to pass to autologin.
+  Use them if you do not want to use autologin keychain UI.
+  ``AUTOLOGIN_LOGIN_URL`` is a relative url.
 - ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
 - ``CRAZY_SEARCH_ENABLED`` - set to 0 to disable submitting search forms
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
@@ -106,9 +110,6 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
   you do not change the logging level from default ``DEBUG``).
 - ``SPLASH_URL`` - url of the splash instance
 - ``USE_SPLASH`` - set to 0 to crawl without using splash
-- ``USERNAME``, ``PASSWORD``, ``LOGIN_URL`` - specify values to pass to
-  autologin - use them if you do not want to use autologin keychain UI.
-  ``LOGIN_URL`` is a relative url.
 
 Pages are stored in CDRv2 format, with the following custom fields inside
 ``extracted_metadata``:
