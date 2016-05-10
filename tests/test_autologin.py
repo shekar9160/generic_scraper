@@ -31,7 +31,7 @@ def is_authenticated(request):
         return False
 
 
-def authenticated_text(content, delay=0):
+def authenticated_text(content, delay=0.0):
     class R(Resource):
         def render_GET(self, request):
             reactor.callLater(delay, self._delayedRender, request)
@@ -95,7 +95,8 @@ class LoginIfUserAgentOk(Login):
         def render_POST(self, request):
             user_agent = request.requestHeaders.getRawHeaders(b'User-Agent')
             if user_agent != [b'MyCustomAgent']:
-                return html("Invalid User-Agent: %s" % user_agent).encode('utf8')
+                return html(
+                    'Invalid User-Agent: %s' % user_agent).encode('utf8')
             return super(LoginIfUserAgentOk._Login, self).render_POST(request)
 
 
@@ -158,8 +159,8 @@ def make_login_crawler_with_store(settings):
 
 @inlineCallbacks
 def test_login(settings):
-    ''' No logout links, just one page after login.
-    '''
+    """ No logout links, just one page after login.
+    """
     crawler = make_login_crawler_with_store(settings)
     with MockServer(Login) as s:
         root_url = s.root_url
@@ -168,7 +169,7 @@ def test_login(settings):
     assert hasattr(spider, 'collected_items')
     assert len(spider.collected_items) == 3
     assert paths_set(spider.collected_items) == \
-            {'/', '/hidden', '/file.pdf'}
+        {'/', '/hidden', '/file.pdf'}
     file_item = find_item('/file.pdf', spider.collected_items)
     with open(file_item['obj_stored_url'], 'rb') as f:
         assert f.read() == b'data'
@@ -176,8 +177,8 @@ def test_login(settings):
 
 @inlineCallbacks
 def test_login_with_logout(settings):
-    ''' Login with logout.
-    '''
+    """ Login with logout.
+    """
     crawler = make_login_crawler_with_store(settings)
     with MockServer(LoginWithLogout) as s:
         root_url = s.root_url

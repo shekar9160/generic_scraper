@@ -63,16 +63,16 @@ class BaseSpider(scrapy.Spider):
                 'run_hh': self.settings.getbool('RUN_HH'),
                 'return_png': self.settings.getbool('SCREENSHOTS'),
                 'images_enabled': False,
-                }
+            }
             if self.settings.getbool('ADBLOCK'):
                 splash_args['filters'] = 'fanboy-annoyance,easylist'
             if self.settings.getbool('FORCE_TOR'):
                 splash_args['proxy'] = 'tor'
-            kwargs.update(
+            kwargs.update(dict(
                 args=splash_args,
                 endpoint='execute',
                 cache_args=['lua_source', 'js_source'],
-            )
+            ))
         meta = meta or {}
         meta['avoid_dup_content'] = True
         return cls(url, callback=callback, meta=meta, **kwargs)
@@ -91,6 +91,7 @@ class BaseSpider(scrapy.Spider):
             'from_search': response.meta.get('is_search'),
             'extracted_at': response.url,
         }
+
         def request(url, meta=None, **kwargs):
             meta = meta or {}
             meta.update(request_meta)
@@ -98,7 +99,7 @@ class BaseSpider(scrapy.Spider):
 
         self._debug_screenshot(response)
         forms = formasaurus.extract_forms(response.text) if response.text \
-                else []
+            else []
         parent_item = self.text_cdr_item(response, dict(
             is_page=response.meta.get('is_page', False),
             is_onclick=response.meta.get('is_onclick', False),
@@ -109,7 +110,7 @@ class BaseSpider(scrapy.Spider):
             depth=response.meta.get('depth', None),
             priority=response.request.priority,
             forms=[meta for _, meta in forms],
-            ))
+        ))
         yield parent_item
 
         if self.settings.getbool('PREFER_PAGINATION'):
@@ -169,8 +170,8 @@ class BaseSpider(scrapy.Spider):
                 yield request_kwargs
 
     def download_files(self, response, normal_urls, parent_item):
-        ''' Download linked files (will be handled via CDRDocumentsPipeline).
-        '''
+        """ Download linked files (will be handled via CDRDocumentsPipeline).
+        """
         urls = set()
         for extractor in [
                 self.images_link_extractor, self.files_link_extractor]:
@@ -189,25 +190,25 @@ class BaseSpider(scrapy.Spider):
                         depth=response.meta.get('depth', None),
                         from_search=response.meta.get('from_search', False),
                         priority=response.request.priority,
-                        ),
+                    ),
                     obj_original_url=url,
                     obj_parent=parent_item.get('_id'),
-                    )
+                )
 
     def text_cdr_item(self, response, metadata):
         return self.cdr_item(
             response.url, metadata,
-            content_type=response.headers['content-type']\
-                .decode('ascii', 'ignore'),
+            content_type=response.headers['content-type']
+                                 .decode('ascii', 'ignore'),
             extracted_text=extract_text(response),
             raw_content=response.text,
-            )
+        )
 
     def cdr_item(self, url, metadata, **extra):
         timestamp = int(datetime.utcnow().timestamp() * 1000)
         return CDRItem(
-            _id=hashlib.sha256('{}-{}'.format(url, timestamp).encode('utf-8'))\
-                .hexdigest().upper(),
+            _id=hashlib.sha256('{}-{}'.format(url, timestamp).encode('utf-8'))
+                       .hexdigest().upper(),
             crawler=self.settings.get('CDR_CRAWLER'),
             extracted_metadata=metadata,
             team=self.settings.get('CDR_TEAM'),
@@ -224,7 +225,7 @@ class BaseSpider(scrapy.Spider):
                 for url in autopager.urls(response)
             )
             if self.link_extractor.matches(url)
-        ]
+            ]
 
     @cached_property('_extra_search_terms')
     def extra_search_terms(self):
@@ -302,6 +303,7 @@ def _dont_increase_depth(response):
 
 _onclick_search = re.compile("(?P<sep>('|\"))(?P<url>.+?)(?P=sep)").search
 
+
 def get_onclick_url(attr_value):
     """
     >>> get_onclick_url("window.open('page.html?productid=23','win2')")
@@ -318,7 +320,7 @@ def get_js_links(response):
     urls = [
         get_onclick_url(value)
         for value in response.xpath('//*/@onclick').extract()
-    ]
+        ]
     # TODO: extract all URLs from <script> tags as well?
     return [url for url in urls if url]
 

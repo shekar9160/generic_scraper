@@ -157,7 +157,7 @@ def test_crazy_form_submitter(settings):
     assert hasattr(spider, 'collected_items')
     assert len(spider.collected_items) == 3
     assert paths_set(spider.collected_items) == \
-            {'/', '/?query=a', '/?query=b'}
+        {'/', '/?query=a', '/?query=b'}
 
 
 class LotsOfLinks(Resource):
