@@ -27,8 +27,16 @@ FILES_STORE_S3_ACL = 'public-read'
 # Set FILES_STORE to enable
 ITEM_PIPELINES = {'undercrawler.documents_pipeline.CDRDocumentsPipeline': 1}
 
+DECAPTCHA_ENABLED = 1
+DECAPTCHA_SOLVER = 'decaptcha.solvers.deathbycaptcha.DeathbycaptchaSolver'
+DECAPTCHA_ENGINES = ['decaptcha.engines.fuzzy_text.FuzzyTextEngine']
+# Pass DeathByCaptcha account details:
+# DECAPTCHA_DEATHBYCAPTCHA_USERNAME
+# DECAPTCHA_DEATHBYCAPTCHA_PASSWORD
+
 DOWNLOADER_MIDDLEWARES = {
     'maybedont.scrapy_middleware.AvoidDupContentMiddleware': 200,
+    'decaptcha.downloadermiddleware.decaptcha.DecaptchaMiddleware': 500,
     'autologin_middleware.AutologinMiddleware': 605,
     'scrapy.downloadermiddlewares.cookies.CookiesMiddleware': None,
     'undercrawler.middleware.CookiesMiddlewareIfNoSplash': 700,
