@@ -62,6 +62,7 @@ class BaseSpider(scrapy.Spider):
                 'js_source': self.js_source,
                 'run_hh': self.settings.getbool('RUN_HH'),
                 'return_png': self.settings.getbool('SCREENSHOTS'),
+                # to save speed and avoid breaking some captchas
                 'images_enabled': False,
             }
             if self.settings.getbool('ADBLOCK'):
