@@ -58,9 +58,9 @@ function main(splash)
   splash:autoload("__headless_horseman__.patchAll();")
   splash:set_viewport_size(viewport_width, viewport_height)
   local ok, reason = splash:go{
-    url, http_method=http_method, headers=headers, body=body }
+    url, http_method=http_method, headers=headers, body=body}
   if #(splash:history()) == 0 then
-    assert(false, reason)
+    error(reason)
   end
   splash:lock_navigation()
 
