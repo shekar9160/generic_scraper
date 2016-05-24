@@ -13,13 +13,14 @@ pytest_plugins = 'pytest_twisted'
 
 @pytest.fixture(params=[False, True])
 def settings(request):
+    use_splash = request.param
     s = Settings()
     s.setmodule(undercrawler.settings)
     s.update({
         'DOWNLOAD_DELAY': 0.01,
         'AUTOTHROTTLE_START_DELAY': 0.01,
         'RUN_HH': False,
-        'USE_SPLASH': request.param,
+        'USE_SPLASH': use_splash,
         })
     s['ITEM_PIPELINES']['tests.utils.CollectorPipeline'] = 100
     splash_url = os.environ.get('SPLASH_URL')
