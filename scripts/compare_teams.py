@@ -5,6 +5,7 @@ import json
 from collections import defaultdict
 from functools import partial
 import os
+from urllib.parse import urlsplit
 
 from scrapy.utils.url import canonicalize_url
 
@@ -50,10 +51,24 @@ def print_stats(by_team, name):
         print()
 
 
+SKIP_EXTENSIONS = {
+    'jpg', 'jpeg', 'gif', 'png', 'pdf', 'zip', 'css', 'flv', 'ico', 'mp4'}
+
+
 def team_hash_reader(root):
     for line in gzip.open(os.path.join(root, 'hashes.gz')):
-        hash, team, url = line.decode('utf-8').strip().split()
-        yield hash, team, url
+        fp, team, url = line.decode('utf-8').strip().split()
+        ext = get_ext(url)
+        if not ext or ext not in SKIP_EXTENSIONS:
+            yield fp, team, url
+
+
+def get_ext(url):
+    p = urlsplit(url.lower())
+    if '.' in p.path:
+        _, ext = p.path.rsplit('.', 1)
+        if ext and '/' not in ext and '=' not in ext:
+            return ext
 
 
 def team_item_reader(root, limit=None):
