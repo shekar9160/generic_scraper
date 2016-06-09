@@ -15,8 +15,6 @@ CRAZY_SEARCH_ENABLED = True
 CDR_CRAWLER = 'scrapy undercrawler'
 CDR_TEAM = 'HG'
 
-USE_SPLASH = True
-
 PREFER_PAGINATION = True
 ADBLOCK = False
 MAX_DOMAIN_SEARCH_FORMS = 10
@@ -49,7 +47,7 @@ USER_AGENT = ('Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 '
               '(KHTML, like Gecko) Ubuntu Chromium/43.0.2357.130 '
               'Chrome/43.0.2357.130 Safari/537.36')
 
-# enabled in CookiesMiddlewareIfNoSplash only when USE_SPLASH is False
+# enabled in CookiesMiddlewareIfNoSplash only when SPLASH_URL is set
 COOKIES_ENABLED = True
 
 # Run full headless-horseman scripts

@@ -7,7 +7,7 @@ from scrapy.pipelines.files import FilesPipeline, S3FilesStore, FSFilesStore
 from scrapy.exceptions import DropItem
 from scrapy_splash import SplashRequest, SlotPolicy
 
-from .utils import load_directive
+from .utils import load_directive, using_splash
 
 
 logging.getLogger('botocore').setLevel(logging.WARNING)
@@ -30,7 +30,7 @@ class CDRDocumentsPipeline(FilesPipeline):
                         '{} documents'.format(urlsplit(url).netloc),
                 },
             )
-            if self.crawler.settings.getbool('USE_SPLASH'):
+            if using_splash(self.crawler.settings):
                 request = SplashRequest(
                     endpoint='execute',
                     args={'lua_source': self.lua_source},

@@ -113,7 +113,7 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``SCREENSHOTS`` - set to 1 to save screenshots while crawling (make sure
   you do not change the logging level from default ``DEBUG``).
 - ``SPLASH_URL`` - url of the splash instance
-- ``USE_SPLASH`` - set to 0 to crawl without using splash
+  (if empty, crawl without using splash)
 
 Pages are stored in CDRv2 format, with the following custom fields inside
 ``extracted_metadata``:

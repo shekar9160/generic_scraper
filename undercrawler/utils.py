@@ -21,3 +21,7 @@ def load_directive(filename):
     root = os.path.join(os.path.dirname(__file__), 'directives')
     with open(os.path.join(root, filename)) as f:
         return f.read()
+
+
+def using_splash(settings):
+    return bool(settings.get('SPLASH_URL'))

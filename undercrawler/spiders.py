@@ -21,7 +21,7 @@ from autologin_middleware import link_looks_like_logout
 
 from .crazy_form_submitter import search_form_requests
 from .items import CDRItem
-from .utils import cached_property, extract_text, load_directive
+from .utils import cached_property, extract_text, load_directive, using_splash
 import undercrawler.settings
 
 
@@ -49,7 +49,7 @@ class BaseSpider(scrapy.Spider):
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
-        self.use_splash = self.settings.getbool('USE_SPLASH')
+        self.use_splash = using_splash(self.settings)
         for url in self.start_urls:
             yield self.make_request(url, callback=self.parse_first)
 
