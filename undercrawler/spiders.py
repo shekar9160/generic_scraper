@@ -13,15 +13,16 @@ import formasaurus
 import scrapy
 from scrapy import Request, FormRequest
 from scrapy.linkextractors import LinkExtractor
+from scrapy.settings import Settings
 from scrapy.utils.url import canonicalize_url, add_http_if_no_scheme
 from scrapy.utils.python import unique
 from scrapy_splash import SplashRequest, SplashFormRequest
 from autologin_middleware import link_looks_like_logout
 
-from .utils import cached_property
-from .items import CDRItem
 from .crazy_form_submitter import search_form_requests
-from .utils import extract_text, load_directive
+from .items import CDRItem
+from .utils import cached_property, extract_text, load_directive
+import undercrawler.settings
 
 
 class BaseSpider(scrapy.Spider):
@@ -289,6 +290,14 @@ class BaseSpider(scrapy.Spider):
         with open(filename, 'wb') as f:
             f.write(b64decode(screenshot))
         self.logger.debug('Saved %s screenshot to %s' % (response, filename))
+
+
+class ArachnadoSpider(BaseSpider):
+    name = 'uc'
+    custom_settings = Settings()
+    custom_settings.setmodule(undercrawler.settings)
+    custom_settings['ITEM_PIPELINES'][
+        'arachnado.pipelines.mongoexport.MongoExportPipeline'] = 600
 
 
 @contextlib.contextmanager
