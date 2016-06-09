@@ -62,6 +62,10 @@ Requires Python 3.4:
 You also will need Splash (but you can just use docker, see below),
 and install [Autologin](https://github.com/TeamHG-Memex/autologin).
 
+There is also an option to run undercrawler with arachnado in a docker container:
+see the [undercrawler-arachnado](./undercrawler-arachnado/README.md)
+folder.
+
 
 Run crawler
 -----------
@@ -74,9 +78,9 @@ Start [Autologin](https://github.com/TeamHG-Memex/autologin) HTTP API
 with the ``autologin-http-api`` command,
 and the UI server with ``autologin-server``.
 
-Specify url to crawl via the ``url`` param, and run the ``base`` spider:
+Specify url to crawl via the ``url`` param, and run the ``undercrawler`` spider:
 
-    scrapy crawl base -a url=http://127.0.0.1:8001
+    scrapy crawl undercrawler -a url=http://127.0.0.1:8001
 
 You can also specify a file to read urls from, with ``-a url=./urls.txt``,
 but in this case you must disable autologin with ``-s AUTOLOGIN_ENABLED=0``,

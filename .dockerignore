@@ -1,0 +1,12 @@
+venv
+.tox
+tests
+*.json
+*.jl
+.git
+*.txt
+!requirements.txt
+**/__pycache__
+**/*.pyc
+*.egg-info
+_sup

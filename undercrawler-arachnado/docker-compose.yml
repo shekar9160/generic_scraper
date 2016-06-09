@@ -1,0 +1,40 @@
+version: '2'
+
+services:
+    arachnado:
+        image: undercrawler-arachnado
+        expose:
+            - 8888
+        links:
+            - arachnado-mongo
+            - autologin
+        ports:
+            - "8888:8888"
+        volumes:
+            - ./arachnado.conf:/etc/arachnado.conf:ro
+            - arachnado-jobs:/var/db/arachnado-jobs
+
+    arachnado-mongo:
+        image: mongo
+        expose:
+            - 27017
+#       ports:
+#           - "27017:27017"
+        volumes:
+            - mongo-data:/data/db
+        restart: always
+
+    autologin:
+        image: hyperiongray/autologin:0.1.2
+        expose:
+            - 8088  # keychain UI
+            - 8089  # API
+        ports:
+            - "8088:8088"
+        volumes:
+            - autologin-data:/var/autologin
+
+volumes:
+    mongo-data: {}
+    autologin-data: {}
+    arachnado-jobs: {}

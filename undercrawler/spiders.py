@@ -18,14 +18,14 @@ from scrapy.utils.python import unique
 from scrapy_splash import SplashRequest, SplashFormRequest
 from autologin_middleware import link_looks_like_logout
 
-from ..utils import cached_property
-from ..items import CDRItem
-from ..crazy_form_submitter import search_form_requests
-from ..utils import extract_text, load_directive
+from .utils import cached_property
+from .items import CDRItem
+from .crazy_form_submitter import search_form_requests
+from .utils import extract_text, load_directive
 
 
 class BaseSpider(scrapy.Spider):
-    name = 'base'
+    name = 'undercrawler'
 
     def __init__(self, url, search_terms=None, *args, **kwargs):
         if url.startswith('.'):
