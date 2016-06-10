@@ -298,7 +298,14 @@ class ArachnadoSpider(BaseSpider):
     custom_settings.setmodule(undercrawler.settings)
     custom_settings['ITEM_PIPELINES'][
         'arachnado.pipelines.mongoexport.MongoExportPipeline'] = 600
-    custom_settings['SPLASH_URL'] = None
+    custom_settings.update({
+        # Convenient to have defaults for all crawls
+        'SPLASH_URL': os.environ.get('SPLASH_URL'),
+        'FILES_STORE': os.environ.get('FILES_STORE'),
+        # Override some undesired Arachnado settings
+        'AUTOTHROTTLE_ENABLED': False,
+        'DOWNLOAD_MAXSIZE': None,
+    })
 
     def __init__(self, *, domain, crawl_id):
         self.crawl_id = crawl_id
