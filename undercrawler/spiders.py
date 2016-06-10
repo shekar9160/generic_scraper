@@ -293,11 +293,18 @@ class BaseSpider(scrapy.Spider):
 
 
 class ArachnadoSpider(BaseSpider):
-    name = 'uc'
+    name = 'undercrawler_arachnado'
     custom_settings = Settings()
     custom_settings.setmodule(undercrawler.settings)
     custom_settings['ITEM_PIPELINES'][
         'arachnado.pipelines.mongoexport.MongoExportPipeline'] = 600
+    custom_settings['SPLASH_URL'] = None
+
+    def __init__(self, *, domain, crawl_id):
+        self.crawl_id = crawl_id
+        self.domain = domain
+        super().__init__(url=domain)
+        self.start_url = self.start_urls[0]
 
 
 @contextlib.contextmanager
