@@ -1,8 +1,8 @@
 scrapy==1.1.0
 botocore
 scrapy-splash==0.6
-git+https://github.com/TeamHG-Memex/autologin-middleware.git
-git+https://github.com/TeamHG-Memex/MaybeDont.git
+autologin-middleware
+MaybeDont
 Formasaurus[with_deps]>=0.8
 autopager==0.2
 datasketch==0.2.3
