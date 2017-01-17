@@ -3,6 +3,7 @@ import tempfile
 import pytest
 from twisted.web.resource import Resource
 
+from undercrawler.utils import using_splash
 from .utils import text_resource, html, paths_set, find_item, inlineCallbacks
 from .mockserver import MockServer
 from .conftest import make_crawler
@@ -67,7 +68,7 @@ class HHPage(text_resource(html(
 @inlineCallbacks
 def test_hh(settings):
     crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False, RUN_HH=True)
-    if not crawler.settings.getbool('USE_SPLASH'):
+    if not using_splash(crawler.settings):
         pytest.skip('requires splash')
     with MockServer(HHPage) as s:
         root_url = s.root_url

@@ -13,19 +13,20 @@ import formasaurus
 import scrapy
 from scrapy import Request, FormRequest
 from scrapy.linkextractors import LinkExtractor
+from scrapy.settings import Settings
 from scrapy.utils.url import canonicalize_url, add_http_if_no_scheme
 from scrapy.utils.python import unique
 from scrapy_splash import SplashRequest, SplashFormRequest
 from autologin_middleware import link_looks_like_logout
 
-from ..utils import cached_property
-from ..items import CDRItem
-from ..crazy_form_submitter import search_form_requests
-from ..utils import extract_text, load_directive
+from .crazy_form_submitter import search_form_requests
+from .items import CDRItem
+from .utils import cached_property, extract_text, load_directive, using_splash
+import undercrawler.settings
 
 
 class BaseSpider(scrapy.Spider):
-    name = 'base'
+    name = 'undercrawler'
 
     def __init__(self, url, search_terms=None, *args, **kwargs):
         if url.startswith('.'):
@@ -48,7 +49,7 @@ class BaseSpider(scrapy.Spider):
         super().__init__(*args, **kwargs)
 
     def start_requests(self):
-        self.use_splash = self.settings.getbool('USE_SPLASH')
+        self.use_splash = using_splash(self.settings)
         for url in self.start_urls:
             yield self.make_request(url, callback=self.parse_first)
 
@@ -289,6 +290,28 @@ class BaseSpider(scrapy.Spider):
         with open(filename, 'wb') as f:
             f.write(b64decode(screenshot))
         self.logger.debug('Saved %s screenshot to %s' % (response, filename))
+
+
+class ArachnadoSpider(BaseSpider):
+    name = 'undercrawler_arachnado'
+    custom_settings = Settings()
+    custom_settings.setmodule(undercrawler.settings)
+    custom_settings['ITEM_PIPELINES'][
+        'arachnado.pipelines.mongoexport.MongoExportPipeline'] = 600
+    custom_settings.update({
+        # Convenient to have defaults for all crawls
+        'SPLASH_URL': os.environ.get('SPLASH_URL'),
+        'FILES_STORE': os.environ.get('FILES_STORE'),
+        # Override some undesired Arachnado settings
+        'AUTOTHROTTLE_ENABLED': False,
+        'DOWNLOAD_MAXSIZE': None,
+    })
+
+    def __init__(self, *, domain, crawl_id):
+        self.crawl_id = crawl_id
+        self.domain = domain
+        super().__init__(url=domain)
+        self.start_url = self.start_urls[0]
 
 
 @contextlib.contextmanager

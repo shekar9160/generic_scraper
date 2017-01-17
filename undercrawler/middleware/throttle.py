@@ -17,9 +17,9 @@ class SplashAwareAutoThrottle(AutoThrottle):
         return cls(crawler)
 
     def process_request(self, request, spider):
-        if not hasattr(spider, 'download_delay'):
+        if not hasattr(self, 'mindelay'):
             self._spider_opened(spider)
-        assert hasattr(spider, 'download_delay')
+        assert hasattr(self, 'mindelay')
 
     def process_response(self, request, response, spider):
         if isinstance(response, SplashJsonResponse) and 'har' in response.data:
