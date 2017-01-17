@@ -100,20 +100,34 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``CDR_CRAWLER``, ``CDR_TEAM`` - CDR export metadata constants
 - ``CRAZY_SEARCH_ENABLED`` - set to 0 to disable submitting search forms
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
-- ``FILES_STORE`` - S3 location for saving extracted documents
-  (format is ``s3://bucket/prefix/``)
+- ``FILES_STORE`` - S3 location for saving extracted documents (including images),
+  format is ``s3://bucket/prefix/``.
 - ``FORCE_TOR`` - crawl via tor to avoid blocking
 - ``HARD_URL_CONSTRAINT`` - set to 1 to treat start urls as hard constraints
   (by default we start from given url but crawl the whole domain)
+- ``IMAGES_ENABLED`` - set to 1 to enable loading images in splash.
+  This affects only the screenshots (and speed), but not saving images.
 - ``MAX_DOMAIN_SEARCH_FORMS`` - max number of search forms considered for domain
 - ``PREFER_PAGINATION`` - set to 0 to disable pagination handling, or adjust
   as needed (value is in seconds).
-- ``RUN_HH`` - set to 0 to skip running full headless-horesman scripts
+- ``RUN_HH`` - set to 0 to skip running full headless-horseman scripts.
 - ``SEARCH_TERMS_FILE`` - file with extra search terms to use (one per line)
-- ``SCREENSHOTS`` - set to 1 to save screenshots while crawling (make sure
-  you do not change the logging level from default ``DEBUG``).
+- ``SCREENSHOT`` - set to 1 to save screenshots while crawling. Path to screenshot
+   will be saved to ``screenshot`` field in the item metadata. It's relative by
+   default, but will be absolute if you pass absolute path to ``SCREENSHOT_DEST``.
+- ``SCREENSHOT_DEST`` - set path to folder where to store the screenshots
+   ("screenshots" by default).
+- ``SCREENSHOT_WIDTH``, ``SCREENSHOT_HEIGHT``: screenshot size.
+   If ``SCREENSHOT_HEIGHT`` is set to 0, then the full page height is used for the
+   screenshot. If not set, screenshot dimensions are equal to
+ ``VIEWPORT_WIDTH`` and ``VIEWPORT_HEIGHT``.
+- ``SCREENSHOT_PREFIX`` - set prefix for screenshot files, empty by default.
 - ``SPLASH_URL`` - url of the splash instance
   (if empty, crawl without using splash)
+- ``VIEWPORT_WIDTH``, ``VIEWPORT_HEIGHT``: viewport size for splash rendering.
+  Note that these settings can affect resulting content, as
+  many websites use a mobile version for smaller screens.
+  Defaults are 1024 and 768.
 
 Pages are stored in CDRv2 format, with the following custom fields inside
 ``extracted_metadata``:
@@ -126,6 +140,7 @@ Pages are stored in CDRv2 format, with the following custom fields inside
 - ``is_onclick``: page url was extracted from ``onclick``, not from a normal link
 - ``is_page``: page was reached via pagination
 - ``is_search``: this is a search result page
+- ``screenshot``: path to saved screenshot, if any (see ``SCREENSHOT`` setting)
 
 All documents (including images) are exported if ``FILES_STORE`` is set.
 

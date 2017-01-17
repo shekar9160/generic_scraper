@@ -68,14 +68,12 @@ LOG_UNSERIALIZABLE_REQUESTS = True
 
 RETRY_ENABLED = True
 
+TELNETCONSOLE_ENABLED = False
 
 # Unused settings from template
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
-
-# Disable Telnet Console (enabled by default)
-#TELNETCONSOLE_ENABLED = False
 
 # Override the default request headers:
 #DEFAULT_REQUEST_HEADERS = {
