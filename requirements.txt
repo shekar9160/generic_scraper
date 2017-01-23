@@ -1,10 +1,11 @@
-scrapy==1.1.0
-botocore
-scrapy-splash==0.6
 autologin-middleware
-MaybeDont
-Formasaurus[with_deps]>=0.8
 autopager==0.2
+botocore
 datasketch==0.2.3
-tqdm
+Formasaurus[with_deps]>=0.8
+MaybeDont
 pytest
+scrapy-splash==0.6
+scrapy==1.1.0
+tqdm
+typing

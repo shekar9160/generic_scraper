@@ -1,12 +1,13 @@
-import re
-import os
-import uuid
+from base64 import b64decode
 import contextlib
 from datetime import datetime
 import hashlib
-from urllib.parse import urljoin, urlsplit
 import logging
-from base64 import b64decode
+import os
+import re
+from typing import Optional
+from urllib.parse import urljoin, urlsplit
+import uuid
 
 import autopager
 import formasaurus
@@ -43,6 +44,7 @@ class BaseSpider(scrapy.Spider):
         self._files_fingerprints = set()
         self.state = {}
         self.use_splash = None  # set up in start_requests
+        self._screenshot_dest = None  # set up in _take_screenshot
         # Load headless horseman scripts
         self.lua_source = load_directive('headless_horseman.lua')
         self.js_source = load_directive('headless_horseman.js')
@@ -58,13 +60,18 @@ class BaseSpider(scrapy.Spider):
         callback = callback or self.parse
         cls = cls or (SplashRequest if self.use_splash else Request)
         if self.use_splash:
+            settings = self.settings
             splash_args = {
                 'lua_source': self.lua_source,
                 'js_source': self.js_source,
-                'run_hh': self.settings.getbool('RUN_HH'),
-                'return_png': self.settings.getbool('SCREENSHOTS'),
-                'images_enabled': False,
+                'run_hh': settings.getbool('RUN_HH'),
+                'return_png': settings.getbool('SCREENSHOT'),
+                'images_enabled': settings.getbool('IMAGES_ENABLED'),
             }
+            for s in ['VIEWPORT_WIDTH', 'VIEWPORT_HEIGHT',
+                      'SCREENSHOT_WIDTH', 'SCREENSHOT_HEIGHT']:
+                if self.settings.get(s):
+                    splash_args[s.lower()] = self.settings.getint(s)
             if self.settings.getbool('ADBLOCK'):
                 splash_args['filters'] = 'fanboy-annoyance,easylist'
             if self.settings.getbool('FORCE_TOR'):
@@ -98,10 +105,9 @@ class BaseSpider(scrapy.Spider):
             meta.update(request_meta)
             return self.make_request(url, meta=meta, **kwargs)
 
-        self._debug_screenshot(response)
-        forms = formasaurus.extract_forms(response.text) if response.text \
-            else []
-        parent_item = self.text_cdr_item(response, dict(
+        forms = (formasaurus.extract_forms(response.text) if response.text
+                 else [])
+        metadata = dict(
             is_page=response.meta.get('is_page', False),
             is_onclick=response.meta.get('is_onclick', False),
             is_iframe=response.meta.get('is_iframe', False),
@@ -111,7 +117,9 @@ class BaseSpider(scrapy.Spider):
             depth=response.meta.get('depth', None),
             priority=response.request.priority,
             forms=[meta for _, meta in forms],
-        ))
+            screenshot=self._take_screenshot(response),
+        )
+        parent_item = self.text_cdr_item(response, metadata)
         yield parent_item
 
         if self.settings.getbool('PREFER_PAGINATION'):
@@ -282,14 +290,24 @@ class BaseSpider(scrapy.Spider):
             return False
         return link_looks_like_logout(link)
 
-    def _debug_screenshot(self, response):
+    def _take_screenshot(self, response) -> Optional[str]:
         screenshot = response.data.get('png') if self.use_splash else None
-        if not screenshot or not self.logger.isEnabledFor(logging.DEBUG):
-            return
-        filename = os.path.join('screenshots', '{}.png'.format(uuid.uuid4()))
+        if not screenshot:
+            return None
+        if self._screenshot_dest is None:
+            self._screenshot_dest = (
+                self.settings.get('SCREENSHOT_DEST', 'screenshots'))
+            if not os.path.exists(self._screenshot_dest):
+                os.mkdir(self._screenshot_dest)
+        filename = os.path.join(
+            self._screenshot_dest,
+            '{prefix}{uuid}.png'.format(
+                prefix=self.settings.get('SCREENSHOT_PREFIX', ''),
+                uuid=uuid.uuid4()))
         with open(filename, 'wb') as f:
             f.write(b64decode(screenshot))
         self.logger.debug('Saved %s screenshot to %s' % (response, filename))
+        return filename
 
 
 class ArachnadoSpider(BaseSpider):

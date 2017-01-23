@@ -1,5 +1,6 @@
 import tempfile
 
+from PIL import Image
 import pytest
 from twisted.web.resource import Resource
 
@@ -159,6 +160,24 @@ def test_crazy_form_submitter(settings):
     assert len(spider.collected_items) == 3
     assert paths_set(spider.collected_items) == \
         {'/', '/?query=a', '/?query=b'}
+
+
+@inlineCallbacks
+def test_screenshots(settings):
+    crawler = make_crawler(
+        settings, AUTOLOGIN_ENABLED=False, RUN_HH=False,
+        SCREENSHOT=True, SCREENSHOT_WIDTH=640, SCREENSHOT_HEIGHT=480)
+    with MockServer(HHPage) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    if using_splash(crawler.settings):
+        for item in spider.collected_items:
+            screenshot_path = item['extracted_metadata']['screenshot']
+            assert screenshot_path is not None
+            screenshot = Image.open(screenshot_path)
+            assert screenshot.size == (640, 480)
 
 
 class LotsOfLinks(Resource):

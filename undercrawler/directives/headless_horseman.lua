@@ -25,11 +25,12 @@ function main(splash)
   local cookies = get_arg(splash.args.cookies, nil)
   local visual = get_arg(splash.args.visual, false)
 
-  -- 992px is Bootstrap's minimum "desktop" size. 744 gives the viewport
-  -- a nice 4:3 aspect ratio. We may need to tweak the viewport size even
-  -- higher, based on real world usage...
-  local viewport_width = splash.args.viewport_width or 992
-  local viewport_height = splash.args.viewport_height or 744
+  -- 1024px is already "desktop" size for most frameworks,
+  -- and 768 gives 4:3 aspect ratio.
+  local viewport_width = get_arg(splash.args.viewport_width, 1024)
+  local viewport_height = get_arg(splash.args.viewport_height, 768)
+  local screenshot_width = get_arg(splash.args.screenshot_width, viewport_width)
+  local screenshot_height = get_arg(splash.args.screenshot_height, viewport_height)
 
   splash.images_enabled = get_arg(splash.args.images_enabled, true)
   -- Set different timeouts for the first and for other requests
@@ -80,11 +81,11 @@ function main(splash)
           .then(splash.resume);
       }
     ]])
-
-    splash:stop()
-    splash:set_viewport_full()
-    splash:wait(1)
   end
+
+  splash:stop()
+  splash:set_viewport_full()
+  splash:wait(1)
 
   -- Render and return the requested outputs.
 
@@ -101,7 +102,11 @@ function main(splash)
   end
 
   if return_png then
-    render['png'] = splash:png{width=viewport_width}
+    if screenshot_height == 0 then
+      render['png'] = splash:png{width=screenshot_width}
+    else
+      render['png'] = splash:png{width=screenshot_width, height=screenshot_height}
+    end
   end
 
   render['url'] = splash:url()
