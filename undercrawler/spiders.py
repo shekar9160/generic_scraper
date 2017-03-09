@@ -40,7 +40,8 @@ class BaseSpider(scrapy.Spider):
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
         self._reset_link_extractors()
         self.images_link_extractor = LinkExtractor(
-            tags=['img'], attrs=['src'], deny_extensions=[])
+            tags=['img'], attrs=['src'], deny_extensions=[],
+            canonicalize=False)
         self._files_fingerprints = set()
         self.state = {}
         self.use_splash = None  # set up in start_requests
@@ -187,7 +188,7 @@ class BaseSpider(scrapy.Spider):
             urls.update(
                 link_to_url(link) for link in extractor.extract_links(response)
                 if not self._looks_like_logout(link, response))
-        urls.difference_update(map(canonicalize_url, normal_urls))
+        urls.difference_update(normal_urls)
         for url in urls:
             fp = url_fingerprint(url)
             if fp not in self._files_fingerprints:
@@ -278,6 +279,7 @@ class BaseSpider(scrapy.Spider):
             tags=['a'],
             attrs=['href'],
             deny_extensions=[],  # allow all extensions
+            canonicalize=False,
         )
 
     @property
