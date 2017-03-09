@@ -54,7 +54,7 @@ Main features and used components are:
 Installation
 ------------
 
-Requires Python 3.4:
+Requires Python 3.5:
 
     pip install -r requirements.txt
     formasaurus init
