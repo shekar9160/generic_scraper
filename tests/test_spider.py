@@ -82,7 +82,7 @@ def test_hh(settings):
     assert item['extracted_text'] == 'changed'
 
 
-FILE_CONTENTS = 'ёюя'.encode('cp1251')
+FILE_CONTENTS = b'\x98\x11Pr\xe7\x17\x8f'
 
 
 class PDFFile(Resource):

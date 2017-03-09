@@ -14,10 +14,10 @@ License is MIT.
 
 Main features and used components are:
 
-- All pages are downloaded using [Splash2](https://github.com/scrapinghub/splash),
+- By default, all pages are downloaded using [Splash](http://splash.readthedocs.io)
   which is a lightweight web browser with an HTTP API.
   [Aquarium](https://github.com/TeamHG-Memex/aquarium) can be used to
-  adds a load balancer for multiple Splash processes,
+  add a load balancer for multiple Splash processes,
   compression for HTTP responses, Tor support (automatic for .onion links) and
   AdBlock Plus filters support.
 - Headless Horseman Scripts help to reveal dynamic content
@@ -25,7 +25,7 @@ Main features and used components are:
   elements revealed by clicking, etc.
   They are implemented as JS scripts that are injected into each rendered page,
   and Lua scripts that control the Splash browser.
-- [Autologin](https://github.com/TeamHG-Memex/autologin) service is used:
+- [Autologin](https://github.com/TeamHG-Memex/autologin) service can be used:
   it includes a UI for managing login credentials and a service that logs in
   and hands cookies to the crawler.
   It also includes a spider that finds login and registration forms
@@ -54,13 +54,14 @@ Main features and used components are:
 Installation
 ------------
 
-Requires Python 3.4:
+Requires Python 3.5:
 
     pip install -r requirements.txt
     formasaurus init
 
-You also will need Splash (but you can just use docker, see below),
-and install [Autologin](https://github.com/TeamHG-Memex/autologin).
+Install two optional services if you plan to use them:
+[Splash](http://splash.readthedocs.io/) (see how to run it below)
+and [Autologin](https://github.com/TeamHG-Memex/autologin).
 
 There is also an option to run undercrawler with arachnado in a docker container:
 see the [undercrawler-arachnado](./undercrawler-arachnado/README.md)
@@ -70,7 +71,8 @@ folder.
 Run crawler
 -----------
 
-Start splash (or use [Aquarium](https://github.com/TeamHG-Memex/aquarium)):
+Start [Splash](http://splash.readthedocs.io/)
+(or use [Aquarium](https://github.com/TeamHG-Memex/aquarium)):
 
     docker run -p 8050:8050 scrapinghub/splash
 
