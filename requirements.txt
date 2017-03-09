@@ -1,11 +1,11 @@
 autologin-middleware
-autopager==0.2
+autopager>=0.2
 botocore
 datasketch==0.2.3
 Formasaurus[with_deps]>=0.8
 MaybeDont
 pytest
-scrapy-splash==0.6
-scrapy==1.1.0
+scrapy-splash>=0.6
+scrapy>=1.1.0
 tqdm
 typing
