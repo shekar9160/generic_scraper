@@ -1,8 +1,6 @@
 from base64 import b64decode
 import contextlib
-from datetime import datetime
 import hashlib
-import logging
 import os
 import re
 from typing import Optional
@@ -17,11 +15,11 @@ from scrapy.linkextractors import LinkExtractor
 from scrapy.settings import Settings
 from scrapy.utils.url import canonicalize_url, add_http_if_no_scheme
 from scrapy.utils.python import unique
+from scrapy_cdr import text_cdr_item
 from scrapy_splash import SplashRequest, SplashFormRequest
 from autologin_middleware import link_looks_like_logout
 
 from .crazy_form_submitter import search_form_requests
-from .items import CDRItem
 from .utils import cached_property, extract_text, load_directive, using_splash
 import undercrawler.settings
 
@@ -193,6 +191,7 @@ class BaseSpider(scrapy.Spider):
             fp = url_fingerprint(url)
             if fp not in self._files_fingerprints:
                 self._files_fingerprints.add(fp)
+                # TODO
                 yield self.cdr_item(
                     url,
                     metadata=dict(
@@ -206,26 +205,11 @@ class BaseSpider(scrapy.Spider):
                 )
 
     def text_cdr_item(self, response, metadata):
-        return self.cdr_item(
-            response.url, metadata,
-            content_type=response.headers['content-type']
-                                 .decode('ascii', 'ignore'),
-            extracted_text=extract_text(response),
-            raw_content=response.text,
+        return text_cdr_item(
+            response,
+            crawler_name=self.settings.get('CDR_CRAWLER'),
+            team_name=self.settings.get('CDR_TEAM'),
         )
-
-    def cdr_item(self, url, metadata, **extra):
-        timestamp = int(datetime.utcnow().timestamp() * 1000)
-        return CDRItem(
-            _id=hashlib.sha256('{}-{}'.format(url, timestamp).encode('utf-8'))
-                       .hexdigest().upper(),
-            crawler=self.settings.get('CDR_CRAWLER'),
-            extracted_metadata=metadata,
-            team=self.settings.get('CDR_TEAM'),
-            timestamp=timestamp,
-            url=url,
-            version=2.0,
-            **extra)
 
     def _pagination_urls(self, response):
         return [
