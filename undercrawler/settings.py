@@ -23,7 +23,9 @@ AVOID_DUP_CONTENT_ENABLED = True
 
 FILES_STORE_S3_ACL = 'public-read'
 # Set FILES_STORE to enable
-ITEM_PIPELINES = {'undercrawler.documents_pipeline.CDRDocumentsPipeline': 1}
+ITEM_PIPELINES = {
+    'undercrawler.media_pipeline.UndercrawlerMediaPipeline': 1,
+}
 
 DOWNLOADER_MIDDLEWARES = {
     'maybedont.scrapy_middleware.AvoidDupContentMiddleware': 200,
