@@ -105,8 +105,6 @@ class BaseSpider(scrapy.Spider):
 
         forms = (formasaurus.extract_forms(response.text) if response.text
                  else [])
-        # TODO - save this metadata somewhere! maybe strip when uploading,
-        # and/or have a script that strips it
         metadata = dict(
             is_page=response.meta.get('is_page', False),
             is_onclick=response.meta.get('is_onclick', False),
@@ -122,7 +120,8 @@ class BaseSpider(scrapy.Spider):
         follow_urls = {link_to_url(link) for link in
                        self.link_extractor.extract_links(response)
                        if not self._looks_like_logout(link, response)}
-        yield self.text_cdr_item(response, follow_urls)
+        yield self.text_cdr_item(
+            response, follow_urls=follow_urls, metadata=metadata)
 
         if self.settings.getbool('PREFER_PAGINATION'):
             # Follow pagination links; pagination is not a subject of
@@ -186,7 +185,7 @@ class BaseSpider(scrapy.Spider):
         urls.difference_update(follow_urls)
         return urls
 
-    def text_cdr_item(self, response, follow_urls):
+    def text_cdr_item(self, response, *, follow_urls, metadata):
         if self.settings.get('FILES_STORE'):
             media_urls = self.media_urls(response, follow_urls)
         else:
@@ -197,6 +196,7 @@ class BaseSpider(scrapy.Spider):
             team_name=self.settings.get('CDR_TEAM'),
             # will be downloaded by UndercrawlerMediaPipeline
             objects=media_urls,
+            metadata=metadata,
         )
 
     def _pagination_urls(self, response):

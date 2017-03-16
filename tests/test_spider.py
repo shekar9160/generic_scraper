@@ -118,7 +118,7 @@ def test_documents(settings):
     spider = crawler.spider
     assert hasattr(spider, 'collected_items')
     assert len(spider.collected_items) == 2
-    root_item, page_item = spider.collected_items
+    root_item = find_item('/', spider.collected_items)
     assert len(root_item['objects']) == 2
     file_item = find_item('/file.pdf', root_item['objects'], 'obj_original_url')
     assert file_item['obj_original_url'] == root_url + '/file.pdf'
@@ -131,6 +131,7 @@ def test_documents(settings):
     with open(os.path.join(tempdir.name, forbidden_item['obj_stored_url']),
               'rb') as f:
         assert f.read() == FILE_CONTENTS * 2
+    page_item = find_item('/page?b=2&a=1', spider.collected_items)
     assert file_item == find_item(
         '/file.pdf', page_item['objects'], 'obj_original_url')
 
@@ -181,7 +182,7 @@ def test_screenshots(settings):
     assert hasattr(spider, 'collected_items')
     if using_splash(crawler.settings):
         for item in spider.collected_items:
-            screenshot_path = item['extracted_metadata']['screenshot']
+            screenshot_path = item['metadata']['screenshot']
             assert screenshot_path is not None
             screenshot = Image.open(screenshot_path)
             assert screenshot.size == (640, 480)
