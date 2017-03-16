@@ -38,8 +38,8 @@ def text_resource(content):
     return Page
 
 
-def find_item(substring, items):
-    [item] = [item for item in items if substring in item['url']]
+def find_item(substring, items, key='url'):
+    [item] = [item for item in items if substring in item[key]]
     return item
 
 

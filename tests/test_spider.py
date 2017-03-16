@@ -1,3 +1,4 @@
+import os.path
 import tempfile
 
 from PIL import Image
@@ -116,16 +117,22 @@ def test_documents(settings):
         yield crawler.crawl(url=root_url)
     spider = crawler.spider
     assert hasattr(spider, 'collected_items')
-    assert len(spider.collected_items) == 4
-    file_item = find_item('/file.pdf', spider.collected_items)
-    assert file_item['url'] == file_item['obj_original_url'] == \
-        root_url + '/file.pdf'
-    with open(file_item['obj_stored_url'], 'rb') as f:
+    assert len(spider.collected_items) == 2
+    root_item, page_item = spider.collected_items
+    assert len(root_item['objects']) == 2
+    file_item = find_item('/file.pdf', root_item['objects'], 'obj_original_url')
+    assert file_item['obj_original_url'] == root_url + '/file.pdf'
+    with open(os.path.join(tempdir.name, file_item['obj_stored_url']),
+              'rb') as f:
         assert f.read() == FILE_CONTENTS
     assert file_item['content_type'] == 'application/pdf'
-    forbidden_item = find_item('/forbidden.pdf', spider.collected_items)
-    with open(forbidden_item['obj_stored_url'], 'rb') as f:
+    forbidden_item = find_item(
+        '/forbidden.pdf', root_item['objects'], 'obj_original_url')
+    with open(os.path.join(tempdir.name, forbidden_item['obj_stored_url']),
+              'rb') as f:
         assert f.read() == FILE_CONTENTS * 2
+    assert file_item == find_item(
+        '/file.pdf', page_item['objects'], 'obj_original_url')
 
 
 class Search(Resource):
