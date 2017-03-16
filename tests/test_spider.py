@@ -26,7 +26,6 @@ def test_single(settings):
     assert len(spider.collected_items) == 1
     item = spider.collected_items[0]
     assert item['url'].rstrip('/') == root_url
-    assert item['extracted_text'] == 'hello'
     assert item['raw_content'] == html('<b>hello</b>')
 
 
@@ -70,17 +69,18 @@ class HHPage(text_resource(html(
 @inlineCallbacks
 def test_hh(settings):
     crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False, RUN_HH=True)
-    if not using_splash(crawler.settings):
-        pytest.skip('requires splash')
     with MockServer(HHPage) as s:
         root_url = s.root_url
         yield crawler.crawl(url=root_url)
     spider = crawler.spider
     assert hasattr(spider, 'collected_items')
-    assert len(spider.collected_items) == 1
     item = spider.collected_items[0]
     assert item['url'].rstrip('/') == root_url
-    assert item['extracted_text'] == 'changed'
+    if using_splash(crawler.settings):
+        assert item['raw_content'] == (
+            '<html><head></head><body>changed</body></html>')
+    else:
+        assert 'hello' in item['raw_content']
 
 
 FILE_CONTENTS = b'\x98\x11Pr\xe7\x17\x8f'
