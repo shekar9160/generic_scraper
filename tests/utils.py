@@ -38,18 +38,18 @@ def text_resource(content):
     return Page
 
 
-def find_item(substring, items):
-    [item] = [item for item in items if substring in item['url']]
+def find_item(path, items, key='url'):
+    item, = [item for item in items if get_path(item[key]) == path]
     return item
 
 
 def paths_set(items):
-    _paths_set = set()
-    for item in items:
-        p = urlsplit(item['url'])
-        _paths_set.add(
-            urlunsplit(['', '', p.path or '/', p.query, p.fragment]))
-    return _paths_set
+    return {get_path(item['url']) for item in items}
+
+
+def get_path(url):
+    p = urlsplit(url)
+    return urlunsplit(['', '', p.path or '/', p.query, p.fragment])
 
 
 def test_paths_set():

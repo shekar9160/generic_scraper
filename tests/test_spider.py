@@ -1,3 +1,4 @@
+import os.path
 import tempfile
 
 from PIL import Image
@@ -25,7 +26,6 @@ def test_single(settings):
     assert len(spider.collected_items) == 1
     item = spider.collected_items[0]
     assert item['url'].rstrip('/') == root_url
-    assert item['extracted_text'] == 'hello'
     assert item['raw_content'] == html('<b>hello</b>')
 
 
@@ -69,17 +69,18 @@ class HHPage(text_resource(html(
 @inlineCallbacks
 def test_hh(settings):
     crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False, RUN_HH=True)
-    if not using_splash(crawler.settings):
-        pytest.skip('requires splash')
     with MockServer(HHPage) as s:
         root_url = s.root_url
         yield crawler.crawl(url=root_url)
     spider = crawler.spider
     assert hasattr(spider, 'collected_items')
-    assert len(spider.collected_items) == 1
     item = spider.collected_items[0]
     assert item['url'].rstrip('/') == root_url
-    assert item['extracted_text'] == 'changed'
+    if using_splash(crawler.settings):
+        assert item['raw_content'] == (
+            '<html><head></head><body>changed</body></html>')
+    else:
+        assert 'hello' in item['raw_content']
 
 
 FILE_CONTENTS = b'\x98\x11Pr\xe7\x17\x8f'
@@ -116,16 +117,23 @@ def test_documents(settings):
         yield crawler.crawl(url=root_url)
     spider = crawler.spider
     assert hasattr(spider, 'collected_items')
-    assert len(spider.collected_items) == 4
-    file_item = find_item('/file.pdf', spider.collected_items)
-    assert file_item['url'] == file_item['obj_original_url'] == \
-        root_url + '/file.pdf'
-    with open(file_item['obj_stored_url'], 'rb') as f:
+    assert len(spider.collected_items) == 2
+    root_item = find_item('/', spider.collected_items)
+    assert len(root_item['objects']) == 2
+    file_item = find_item('/file.pdf', root_item['objects'], 'obj_original_url')
+    assert file_item['obj_original_url'] == root_url + '/file.pdf'
+    with open(os.path.join(tempdir.name, file_item['obj_stored_url']),
+              'rb') as f:
         assert f.read() == FILE_CONTENTS
     assert file_item['content_type'] == 'application/pdf'
-    forbidden_item = find_item('/forbidden.pdf', spider.collected_items)
-    with open(forbidden_item['obj_stored_url'], 'rb') as f:
+    forbidden_item = find_item(
+        '/forbidden.pdf', root_item['objects'], 'obj_original_url')
+    with open(os.path.join(tempdir.name, forbidden_item['obj_stored_url']),
+              'rb') as f:
         assert f.read() == FILE_CONTENTS * 2
+    page_item = find_item('/page?b=2&a=1', spider.collected_items)
+    assert file_item == find_item(
+        '/file.pdf', page_item['objects'], 'obj_original_url')
 
 
 class Search(Resource):
@@ -174,7 +182,7 @@ def test_screenshots(settings):
     assert hasattr(spider, 'collected_items')
     if using_splash(crawler.settings):
         for item in spider.collected_items:
-            screenshot_path = item['extracted_metadata']['screenshot']
+            screenshot_path = item['metadata']['screenshot']
             assert screenshot_path is not None
             screenshot = Image.open(screenshot_path)
             assert screenshot.size == (640, 480)

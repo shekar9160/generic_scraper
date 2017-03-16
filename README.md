@@ -103,7 +103,9 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
 - ``CRAZY_SEARCH_ENABLED`` - set to 0 to disable submitting search forms
 - ``DOWNLOAD_DELAY`` - set to 0 when crawling local test server
 - ``FILES_STORE`` - S3 location for saving extracted documents (including images),
-  format is ``s3://bucket/prefix/``.
+  format is ``s3://bucket/prefix/`` for storing to S3 or a local path for storing
+  media items locally (in case of local path, ``obj_stored_url`` will be relative
+  to the ``FILES_STORE`` path).
 - ``FORCE_TOR`` - crawl via tor to avoid blocking
 - ``HARD_URL_CONSTRAINT`` - set to 1 to treat start urls as hard constraints
   (by default we start from given url but crawl the whole domain)

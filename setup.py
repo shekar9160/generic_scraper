@@ -10,6 +10,7 @@ setup(
         'botocore',
         'Formasaurus[with_deps]>=0.8',
         'MaybeDont',
+        'scrapy-cdr>=0.2.0',
         'scrapy-splash>=0.6',
         'scrapy>=1.1.0',
         'typing',

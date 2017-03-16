@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-
+import os.path
 import tempfile
 import uuid
 
@@ -167,11 +167,13 @@ def test_login(settings):
         yield crawler.crawl(url=root_url)
     spider = crawler.spider
     assert hasattr(spider, 'collected_items')
-    assert len(spider.collected_items) == 3
-    assert paths_set(spider.collected_items) == \
-        {'/', '/hidden', '/file.pdf'}
-    file_item = find_item('/file.pdf', spider.collected_items)
-    with open(file_item['obj_stored_url'], 'rb') as f:
+    assert len(spider.collected_items) == 2
+    assert paths_set(spider.collected_items) == {'/', '/hidden'}
+    root_item = find_item('/', spider.collected_items)
+    file_item = find_item('/file.pdf', root_item['objects'], 'obj_original_url')
+    files_store_root = crawler.settings['FILES_STORE'][len('file://'):]
+    with open(os.path.join(files_store_root, file_item['obj_stored_url']),
+              'rb') as f:
         assert f.read() == b'data'
 
 
@@ -186,8 +188,7 @@ def test_login_with_logout(settings):
     spider = crawler.spider
     assert hasattr(spider, 'collected_items')
     spider_urls = paths_set(spider.collected_items)
-    mandatory_urls = {
-        '/', '/hidden', '/one', '/two', '/three', '/file.pdf', '/slow'}
+    mandatory_urls = {'/', '/hidden', '/one', '/two', '/three', '/slow'}
     assert mandatory_urls.difference(spider_urls) == set()
     assert spider_urls.difference(
         mandatory_urls | {'/l0gout1', '/l0gout2'}) == set()

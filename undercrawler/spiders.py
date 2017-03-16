@@ -1,8 +1,6 @@
 from base64 import b64decode
 import contextlib
-from datetime import datetime
 import hashlib
-import logging
 import os
 import re
 from typing import Optional
@@ -17,11 +15,11 @@ from scrapy.linkextractors import LinkExtractor
 from scrapy.settings import Settings
 from scrapy.utils.url import canonicalize_url, add_http_if_no_scheme
 from scrapy.utils.python import unique
+from scrapy_cdr import text_cdr_item
 from scrapy_splash import SplashRequest, SplashFormRequest
 from autologin_middleware import link_looks_like_logout
 
 from .crazy_form_submitter import search_form_requests
-from .items import CDRItem
 from .utils import cached_property, extract_text, load_directive, using_splash
 import undercrawler.settings
 
@@ -42,7 +40,6 @@ class BaseSpider(scrapy.Spider):
         self.images_link_extractor = LinkExtractor(
             tags=['img'], attrs=['src'], deny_extensions=[],
             canonicalize=False)
-        self._files_fingerprints = set()
         self.state = {}
         self.use_splash = None  # set up in start_requests
         self._screenshot_dest = None  # set up in _take_screenshot
@@ -120,8 +117,11 @@ class BaseSpider(scrapy.Spider):
             forms=[meta for _, meta in forms],
             screenshot=self._take_screenshot(response),
         )
-        parent_item = self.text_cdr_item(response, metadata)
-        yield parent_item
+        follow_urls = {link_to_url(link) for link in
+                       self.link_extractor.extract_links(response)
+                       if not self._looks_like_logout(link, response)}
+        yield self.text_cdr_item(
+            response, follow_urls=follow_urls, metadata=metadata)
 
         if self.settings.getbool('PREFER_PAGINATION'):
             # Follow pagination links; pagination is not a subject of
@@ -135,14 +135,8 @@ class BaseSpider(scrapy.Spider):
         # Follow all in-domain links.
         # Pagination requests are sent twice, but we don't care because
         # they're be filtered out by a dupefilter.
-        normal_urls = {link_to_url(link) for link in
-                       self.link_extractor.extract_links(response)
-                       if not self._looks_like_logout(link, response)}
-        for url in normal_urls:
+        for url in follow_urls:
             yield request(url)
-
-        if self.settings.get('FILES_STORE'):
-            yield from self.download_files(response, normal_urls, parent_item)
 
         # urls extracted from onclick handlers
         for url in get_js_links(response):
@@ -179,8 +173,8 @@ class BaseSpider(scrapy.Spider):
                     SplashFormRequest if self.use_splash else FormRequest
                 yield request_kwargs
 
-    def download_files(self, response, normal_urls, parent_item):
-        """ Download linked files (will be handled via CDRDocumentsPipeline).
+    def media_urls(self, response, follow_urls):
+        """ Return all links to media objects (urls).
         """
         urls = set()
         for extractor in [
@@ -188,44 +182,22 @@ class BaseSpider(scrapy.Spider):
             urls.update(
                 link_to_url(link) for link in extractor.extract_links(response)
                 if not self._looks_like_logout(link, response))
-        urls.difference_update(normal_urls)
-        for url in urls:
-            fp = url_fingerprint(url)
-            if fp not in self._files_fingerprints:
-                self._files_fingerprints.add(fp)
-                yield self.cdr_item(
-                    url,
-                    metadata=dict(
-                        extracted_at=response.url,
-                        depth=response.meta.get('depth', None),
-                        from_search=response.meta.get('from_search', False),
-                        priority=response.request.priority,
-                    ),
-                    obj_original_url=url,
-                    obj_parent=parent_item.get('_id'),
-                )
+        urls.difference_update(follow_urls)
+        return urls
 
-    def text_cdr_item(self, response, metadata):
-        return self.cdr_item(
-            response.url, metadata,
-            content_type=response.headers['content-type']
-                                 .decode('ascii', 'ignore'),
-            extracted_text=extract_text(response),
-            raw_content=response.text,
+    def text_cdr_item(self, response, *, follow_urls, metadata):
+        if self.settings.get('FILES_STORE'):
+            media_urls = self.media_urls(response, follow_urls)
+        else:
+            media_urls = []
+        return text_cdr_item(
+            response,
+            crawler_name=self.settings.get('CDR_CRAWLER'),
+            team_name=self.settings.get('CDR_TEAM'),
+            # will be downloaded by UndercrawlerMediaPipeline
+            objects=media_urls,
+            metadata=metadata,
         )
-
-    def cdr_item(self, url, metadata, **extra):
-        timestamp = int(datetime.utcnow().timestamp() * 1000)
-        return CDRItem(
-            _id=hashlib.sha256('{}-{}'.format(url, timestamp).encode('utf-8'))
-                       .hexdigest().upper(),
-            crawler=self.settings.get('CDR_CRAWLER'),
-            extracted_metadata=metadata,
-            team=self.settings.get('CDR_TEAM'),
-            timestamp=timestamp,
-            url=url,
-            version=2.0,
-            **extra)
 
     def _pagination_urls(self, response):
         return [
