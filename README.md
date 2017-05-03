@@ -72,21 +72,23 @@ Run crawler
 -----------
 
 Start [Splash](http://splash.readthedocs.io/)
-(or use [Aquarium](https://github.com/TeamHG-Memex/aquarium)):
+(or use [Aquarium](https://github.com/TeamHG-Memex/aquarium),
+or disable Splash - see ``SPLASH_URL`` setting below):
 
     docker run -p 8050:8050 scrapinghub/splash
 
 Start [Autologin](https://github.com/TeamHG-Memex/autologin) HTTP API
 with the ``autologin-http-api`` command,
-and the UI server with ``autologin-server``.
+and the UI server with ``autologin-server``
+(or disable autologin - see ``AUTOLOGIN_ENABLED`` below).
 
 Specify url to crawl via the ``url`` param, and run the ``undercrawler`` spider:
 
     scrapy crawl undercrawler -a url=http://127.0.0.1:8001
 
 You can also specify a file to read urls from, with ``-a url=./urls.txt``,
-but in this case you must disable autologin with ``-s AUTOLOGIN_ENABLED=0``,
-or ensure that all urls use common authentication.
+but in this case you must ensure that all urls use common authentication
+(e.g. are from the same domain), or disable autologin.
 
 Useful options to tweak (add to the above command via ``-s NAME=value``):
 
