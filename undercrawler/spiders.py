@@ -1,8 +1,8 @@
 from base64 import b64decode
-import codecs
 import contextlib
 import hashlib
 import os
+from pathlib import Path
 import re
 from typing import Optional
 from urllib.parse import urljoin, urlsplit
@@ -30,7 +30,7 @@ class BaseSpider(scrapy.Spider):
 
     def __init__(self, url, search_terms=None, *args, **kwargs):
         if url.startswith('.') or url.startswith('/'):
-            with codecs.open(url, 'r', encoding='utf8') as f:
+            with Path(url).open('rt', encoding='utf8') as f:
                 urls = [line.strip() for line in f]
         else:
             urls = [url]
@@ -43,7 +43,7 @@ class BaseSpider(scrapy.Spider):
             canonicalize=False)
         self.state = {}
         self.use_splash = None  # set up in start_requests
-        self._screenshot_dest = None  # set up in _take_screenshot
+        self._screenshot_dest = None  # type: Path
         # Load headless horseman scripts
         self.lua_source = load_directive('headless_horseman.lua')
         self.js_source = load_directive('headless_horseman.js')
@@ -221,7 +221,7 @@ class BaseSpider(scrapy.Spider):
     def extra_search_terms(self):
         st_file = self.settings.get('SEARCH_TERMS_FILE')
         if st_file:
-            with codecs.open(st_file, 'r', encoding='utf8') as f:
+            with Path(st_file).open('rt', encoding='utf8') as f:
                 return [line.strip() for line in f]
         else:
             return []
@@ -271,19 +271,16 @@ class BaseSpider(scrapy.Spider):
         if not screenshot:
             return None
         if self._screenshot_dest is None:
-            self._screenshot_dest = (
+            self._screenshot_dest = Path(
                 self.settings.get('SCREENSHOT_DEST', 'screenshots'))
-            if not os.path.exists(self._screenshot_dest):
-                os.mkdir(self._screenshot_dest)
-        filename = os.path.join(
-            self._screenshot_dest,
+            self._screenshot_dest.mkdir(parents=True, exist_ok=True)
+        path = self._screenshot_dest.joinpath(
             '{prefix}{uuid}.png'.format(
                 prefix=self.settings.get('SCREENSHOT_PREFIX', ''),
                 uuid=uuid.uuid4()))
-        with open(filename, 'wb') as f:
-            f.write(b64decode(screenshot))
-        self.logger.debug('Saved %s screenshot to %s' % (response, filename))
-        return filename
+        path.write_bytes(b64decode(screenshot))
+        self.logger.debug('Saved %s screenshot to %s' % (response, path))
+        return str(path)
 
 
 class ArachnadoSpider(BaseSpider):
