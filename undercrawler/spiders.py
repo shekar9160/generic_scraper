@@ -1,4 +1,5 @@
 from base64 import b64decode
+import codecs
 import contextlib
 import hashlib
 import os
@@ -29,7 +30,7 @@ class BaseSpider(scrapy.Spider):
 
     def __init__(self, url, search_terms=None, *args, **kwargs):
         if url.startswith('.'):
-            with open(url) as f:
+            with codecs.open(url, 'r', encoding='utf8') as f:
                 urls = [line.strip() for line in f]
         else:
             urls = [url]
@@ -213,7 +214,7 @@ class BaseSpider(scrapy.Spider):
     def extra_search_terms(self):
         st_file = self.settings.get('SEARCH_TERMS_FILE')
         if st_file:
-            with open(st_file) as f:
+            with codecs.open(st_file, 'r', encoding='utf8') as f:
                 return [line.strip() for line in f]
         else:
             return []
