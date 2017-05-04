@@ -13,10 +13,6 @@ def cached_property(name):
     return deco
 
 
-def extract_text(response):
-    return '\n'.join(response.xpath('//body').xpath('string()').extract())
-
-
 def load_directive(filename):
     root = os.path.join(os.path.dirname(__file__), 'directives')
     with open(os.path.join(root, filename)) as f:

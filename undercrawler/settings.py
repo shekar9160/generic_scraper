@@ -11,6 +11,7 @@ SPLASH_URL = 'http://127.0.0.1:8050'
 AUTOLOGIN_URL = 'http://127.0.0.1:8089'
 AUTOLOGIN_ENABLED = True
 CRAZY_SEARCH_ENABLED = True
+FOLLOW_LINKS = True
 
 CDR_CRAWLER = 'scrapy undercrawler'
 CDR_TEAM = 'HG'

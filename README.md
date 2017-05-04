@@ -86,8 +86,9 @@ Specify url to crawl via the ``url`` param, and run the ``undercrawler`` spider:
 
     scrapy crawl undercrawler -a url=http://127.0.0.1:8001
 
-You can also specify a file to read urls from, with ``-a url=./urls.txt``,
-but in this case you must ensure that all urls use common authentication
+You can also specify a file to read urls from, with ``-a url=./urls.txt``
+(this can be an absolute path starting with "/" or a relative path starting with ".").
+In case of multiple urls you must ensure that all urls use common authentication
 (e.g. are from the same domain), or disable autologin.
 
 Useful options to tweak (add to the above command via ``-s NAME=value``):
@@ -108,6 +109,8 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
   format is ``s3://bucket/prefix/`` for storing to S3 or a local path for storing
   media items locally (in case of local path, ``obj_stored_url`` will be relative
   to the ``FILES_STORE`` path).
+- ``FOLLOW_LINKS`` - set to 0 to crawl only initial urls. Media items will still
+  be crawled (if they should be crawled according to the rest of the settings)
 - ``FORCE_TOR`` - crawl via tor to avoid blocking
 - ``HARD_URL_CONSTRAINT`` - set to 1 to treat start urls as hard constraints
   (by default we start from given url but crawl the whole domain)
@@ -167,13 +170,8 @@ Run all tests with:
 
     tox
 
-This assumes that splash is running on the default url http://127.0.0.1:8050,
-you can pass it to tests like this (required on OS X with splash in docker):
-
-    SPLASH_URL=http://192.168.99.100:8050 tox
-
-Note that you can not use an external splash instance, because tests start
-local test servers.
+This assumes that splash is running on the default url http://127.0.0.1:8050
+with ``--network host``.
 
 Tests are run using py.test, you can pass arguments after ``--``:
 

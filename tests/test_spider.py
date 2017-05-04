@@ -1,5 +1,4 @@
 import os.path
-import tempfile
 
 from PIL import Image
 import pytest
@@ -59,6 +58,36 @@ def test_follow(settings, **extra):
     assert item2['raw_content'] == html('two')
 
 
+@inlineCallbacks
+def test_no_follow(settings):
+    crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False, FOLLOW_LINKS='0')
+    with MockServer(Follow) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 1
+    item0 = spider.collected_items[0]
+    assert item0['url'].rstrip('/') == root_url
+
+
+@inlineCallbacks
+def test_no_follow_multiple(settings, tmpdir):
+    crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False, FOLLOW_LINKS='0')
+    with MockServer(Follow) as s:
+        root_url = s.root_url
+        urls_file = tmpdir.join('urls.txt')
+        urls_file.write('\n'.join([root_url, root_url + '/two']))
+        yield crawler.crawl(url=str(urls_file))
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 2
+    item0 = spider.collected_items[0]
+    assert item0['url'].rstrip('/') == root_url
+    item1 = spider.collected_items[1]
+    assert item1['url'] == root_url + '/two'
+
+
 class HHPage(text_resource(html(
         '<a onclick="document.body.innerHTML=\'changed\';">more</a>'
         '<b>hello</b>'
@@ -108,10 +137,9 @@ class WithFile(Resource):
 
 
 @inlineCallbacks
-def test_documents(settings):
-    tempdir = tempfile.TemporaryDirectory()
+def test_documents(settings, tmpdir):
     crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False,
-                           FILES_STORE='file://' + tempdir.name)
+                           FILES_STORE='file://{}'.format(tmpdir))
     with MockServer(WithFile) as s:
         root_url = s.root_url
         yield crawler.crawl(url=root_url)
@@ -122,18 +150,35 @@ def test_documents(settings):
     assert len(root_item['objects']) == 2
     file_item = find_item('/file.pdf', root_item['objects'], 'obj_original_url')
     assert file_item['obj_original_url'] == root_url + '/file.pdf'
-    with open(os.path.join(tempdir.name, file_item['obj_stored_url']),
-              'rb') as f:
-        assert f.read() == FILE_CONTENTS
+    assert tmpdir.join(file_item['obj_stored_url']).read('rb') == FILE_CONTENTS
     assert file_item['content_type'] == 'application/pdf'
     forbidden_item = find_item(
         '/forbidden.pdf', root_item['objects'], 'obj_original_url')
-    with open(os.path.join(tempdir.name, forbidden_item['obj_stored_url']),
-              'rb') as f:
-        assert f.read() == FILE_CONTENTS * 2
+    assert tmpdir.join(forbidden_item['obj_stored_url']).read('rb') == \
+           FILE_CONTENTS * 2
     page_item = find_item('/page?b=2&a=1', spider.collected_items)
     assert file_item == find_item(
         '/file.pdf', page_item['objects'], 'obj_original_url')
+
+
+@inlineCallbacks
+def test_documents_no_follow(settings, tmpdir):
+    crawler = make_crawler(settings, AUTOLOGIN_ENABLED=False, FOLLOW_LINKS=False,
+                           FILES_STORE='file://{}'.format(tmpdir))
+    with MockServer(WithFile) as s:
+        root_url = s.root_url
+        yield crawler.crawl(url=root_url)
+    spider = crawler.spider
+    assert hasattr(spider, 'collected_items')
+    assert len(spider.collected_items) == 1
+    root_item = find_item('/', spider.collected_items)
+    assert len(root_item['objects']) == 2
+    file_item = find_item('/file.pdf', root_item['objects'], 'obj_original_url')
+    assert file_item['obj_original_url'] == root_url + '/file.pdf'
+    forbidden_item = find_item(
+        '/forbidden.pdf', root_item['objects'], 'obj_original_url')
+    assert tmpdir.join(forbidden_item['obj_stored_url']).read('rb') == \
+           FILE_CONTENTS * 2
 
 
 class Search(Resource):

@@ -1,4 +1,5 @@
 from base64 import b64decode
+import codecs
 import contextlib
 import hashlib
 import os
@@ -20,7 +21,7 @@ from scrapy_splash import SplashRequest, SplashFormRequest
 from autologin_middleware import link_looks_like_logout
 
 from .crazy_form_submitter import search_form_requests
-from .utils import cached_property, extract_text, load_directive, using_splash
+from .utils import cached_property, load_directive, using_splash
 import undercrawler.settings
 
 
@@ -28,8 +29,8 @@ class BaseSpider(scrapy.Spider):
     name = 'undercrawler'
 
     def __init__(self, url, search_terms=None, *args, **kwargs):
-        if url.startswith('.'):
-            with open(url) as f:
+        if url.startswith('.') or url.startswith('/'):
+            with codecs.open(url, 'r', encoding='utf8') as f:
                 urls = [line.strip() for line in f]
         else:
             urls = [url]
@@ -84,9 +85,13 @@ class BaseSpider(scrapy.Spider):
         return cls(url, callback=callback, meta=meta, **kwargs)
 
     def parse_first(self, response):
-        self.allowed += (allowed_re(
-            response.url, self.settings.getbool('HARD_URL_CONSTRAINT')),)
-        self.logger.info('Updated allowed regexps: %s', self.allowed)
+        allowed = allowed_re(
+            response.url, self.settings.getbool('HARD_URL_CONSTRAINT'))
+        if allowed not in self.allowed:
+            self.allowed.add(allowed)
+            # Reset link extractors to pick up with the latest self.allowed regexps
+            self._reset_link_extractors()
+            self.logger.info('Updated allowed regexps: %s', self.allowed)
         yield from self.parse(response)
 
     def parse(self, response):
@@ -122,6 +127,9 @@ class BaseSpider(scrapy.Spider):
                        if not self._looks_like_logout(link, response)}
         yield self.text_cdr_item(
             response, follow_urls=follow_urls, metadata=metadata)
+
+        if not self.settings.getbool('FOLLOW_LINKS'):
+            return
 
         if self.settings.getbool('PREFER_PAGINATION'):
             # Follow pagination links; pagination is not a subject of
@@ -213,20 +221,14 @@ class BaseSpider(scrapy.Spider):
     def extra_search_terms(self):
         st_file = self.settings.get('SEARCH_TERMS_FILE')
         if st_file:
-            with open(st_file) as f:
+            with codecs.open(st_file, 'r', encoding='utf8') as f:
                 return [line.strip() for line in f]
         else:
             return []
 
     @property
     def allowed(self):
-        return self.state.setdefault('allowed', ())
-
-    @allowed.setter
-    def allowed(self, allowed):
-        self.state['allowed'] = allowed
-        # Reset link extractors to pick up with the latest self.allowed regexps
-        self._reset_link_extractors()
+        return self.state.setdefault('allowed', set())
 
     def _reset_link_extractors(self):
         self._link_extractor = None
