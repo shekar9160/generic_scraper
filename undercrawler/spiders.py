@@ -29,7 +29,7 @@ class BaseSpider(scrapy.Spider):
     name = 'undercrawler'
 
     def __init__(self, url, search_terms=None, *args, **kwargs):
-        if url.startswith('.'):
+        if url.startswith('.') or url.startswith('/'):
             with codecs.open(url, 'r', encoding='utf8') as f:
                 urls = [line.strip() for line in f]
         else:

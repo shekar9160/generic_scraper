@@ -86,8 +86,9 @@ Specify url to crawl via the ``url`` param, and run the ``undercrawler`` spider:
 
     scrapy crawl undercrawler -a url=http://127.0.0.1:8001
 
-You can also specify a file to read urls from, with ``-a url=./urls.txt``,
-but in this case you must ensure that all urls use common authentication
+You can also specify a file to read urls from, with ``-a url=./urls.txt``
+(this can be an absolute path starting with "/" or a relative path starting with ".").
+In case of multiple urls you must ensure that all urls use common authentication
 (e.g. are from the same domain), or disable autologin.
 
 Useful options to tweak (add to the above command via ``-s NAME=value``):
