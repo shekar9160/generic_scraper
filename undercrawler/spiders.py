@@ -85,9 +85,13 @@ class BaseSpider(scrapy.Spider):
         return cls(url, callback=callback, meta=meta, **kwargs)
 
     def parse_first(self, response):
-        self.allowed += (allowed_re(
-            response.url, self.settings.getbool('HARD_URL_CONSTRAINT')),)
-        self.logger.info('Updated allowed regexps: %s', self.allowed)
+        allowed = allowed_re(
+            response.url, self.settings.getbool('HARD_URL_CONSTRAINT'))
+        if allowed not in self.allowed:
+            self.allowed.add(allowed)
+            # Reset link extractors to pick up with the latest self.allowed regexps
+            self._reset_link_extractors()
+            self.logger.info('Updated allowed regexps: %s', self.allowed)
         yield from self.parse(response)
 
     def parse(self, response):
@@ -221,13 +225,7 @@ class BaseSpider(scrapy.Spider):
 
     @property
     def allowed(self):
-        return self.state.setdefault('allowed', ())
-
-    @allowed.setter
-    def allowed(self, allowed):
-        self.state['allowed'] = allowed
-        # Reset link extractors to pick up with the latest self.allowed regexps
-        self._reset_link_extractors()
+        return self.state.setdefault('allowed', set())
 
     def _reset_link_extractors(self):
         self._link_extractor = None
