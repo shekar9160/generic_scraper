@@ -170,13 +170,8 @@ Run all tests with:
 
     tox
 
-This assumes that splash is running on the default url http://127.0.0.1:8050,
-you can pass it to tests like this (required on OS X with splash in docker):
-
-    SPLASH_URL=http://192.168.99.100:8050 tox
-
-Note that you can not use an external splash instance, because tests start
-local test servers.
+This assumes that splash is running on the default url http://127.0.0.1:8050
+with ``--network host``.
 
 Tests are run using py.test, you can pass arguments after ``--``:
 
