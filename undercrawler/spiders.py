@@ -128,6 +128,9 @@ class BaseSpider(scrapy.Spider):
         yield self.text_cdr_item(
             response, follow_urls=follow_urls, metadata=metadata)
 
+        if not self.settings.getbool('FOLLOW_LINKS'):
+            return
+
         if self.settings.getbool('PREFER_PAGINATION'):
             # Follow pagination links; pagination is not a subject of
             # a max depth limit. This also prioritizes pagination links because

@@ -109,6 +109,8 @@ Useful options to tweak (add to the above command via ``-s NAME=value``):
   format is ``s3://bucket/prefix/`` for storing to S3 or a local path for storing
   media items locally (in case of local path, ``obj_stored_url`` will be relative
   to the ``FILES_STORE`` path).
+- ``FOLLOW_LINKS`` - set to 0 to crawl only initial urls. Media items will still
+  be crawled (if they should be crawled according to the rest of the settings)
 - ``FORCE_TOR`` - crawl via tor to avoid blocking
 - ``HARD_URL_CONSTRAINT`` - set to 1 to treat start urls as hard constraints
   (by default we start from given url but crawl the whole domain)
