@@ -21,7 +21,7 @@ from scrapy_splash import SplashRequest, SplashFormRequest
 from autologin_middleware import link_looks_like_logout
 
 from .crazy_form_submitter import search_form_requests
-from .utils import cached_property, extract_text, load_directive, using_splash
+from .utils import cached_property, load_directive, using_splash
 import undercrawler.settings
 
 
