@@ -86,6 +86,8 @@ Specify url to crawl via the ``url`` param, and run the ``undercrawler`` spider:
 
     scrapy crawl undercrawler -a url=http://127.0.0.1:8001
 
+Multiple urls can be passed from the command line using space (or tab, or newline)
+delimiter, e.g ``-a url='example.com google.com'``.
 You can also specify a file to read urls from, with ``-a url=./urls.txt``
 (this can be an absolute path starting with "/" or a relative path starting with ".").
 In case of multiple urls you must ensure that all urls use common authentication
