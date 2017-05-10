@@ -33,7 +33,7 @@ class BaseSpider(scrapy.Spider):
             with codecs.open(url, 'r', encoding='utf8') as f:
                 urls = [line.strip() for line in f]
         else:
-            urls = [url]
+            urls = [u for u in url.split() if u]
         self.start_urls = [add_http_if_no_scheme(_url) for _url in urls]
         self.search_terms = search_terms
         self._extra_search_terms = None  # lazy-loaded via extra_search_terms
