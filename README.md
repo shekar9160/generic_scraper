@@ -178,3 +178,9 @@ with ``--network host``.
 Tests are run using py.test, you can pass arguments after ``--``:
 
     tox -- tests/test_spider.py
+
+----
+
+.. image:: https://hyperiongray.s3.amazonaws.com/define-hg.svg
+	:target: https://hyperiongray.com/?pk_campaign=github&pk_kwd=undercrawler
+	:alt: define hyperiongray
